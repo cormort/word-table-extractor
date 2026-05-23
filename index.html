@@ -144,6 +144,12 @@
     .merge-item-row:last-child { border-bottom: none; }
     .merge-item-row:hover { background: #f1f5f9; }
     .merge-item-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    .merge-order-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 24px; height: 24px; padding: 0 6px;
+      border-radius: 12px; background: #f59e0b; color: white;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
     .merge-item-info { display: flex; flex-direction: column; }
     .merge-item-title { font-weight: 600; color: #1e293b; font-size: 14px; }
     .merge-item-desc { font-size: 13px; color: #64748b; }
@@ -246,7 +252,39 @@
       files: [],           // [{ fileId, fileName, tables: [...] }]
       fileCounter: 0,
       undoStacks: {},      // { "fileId:tableIdx": [previousData, ...] }
+      mergeOrder: [],      // [{ fileId, tableIdx }, ...] 合併中心的勾選順序
     };
+
+    // ============ Merge selection order helpers ============
+    function mergeOrderKey(fileId, tableIdx) { return `${fileId}:${tableIdx}`; }
+
+    function addToMergeOrder(fileId, tableIdx) {
+      const key = mergeOrderKey(fileId, tableIdx);
+      if (!state.mergeOrder.some(o => mergeOrderKey(o.fileId, o.tableIdx) === key)) {
+        state.mergeOrder.push({ fileId, tableIdx });
+      }
+    }
+
+    function removeFromMergeOrder(fileId, tableIdx) {
+      const key = mergeOrderKey(fileId, tableIdx);
+      state.mergeOrder = state.mergeOrder.filter(o => mergeOrderKey(o.fileId, o.tableIdx) !== key);
+    }
+
+    function clearMergeOrder() { state.mergeOrder = []; }
+
+    function updateOrderBadges() {
+      document.querySelectorAll('.merge-order-badge').forEach(b => b.remove());
+      state.mergeOrder.forEach((item, idx) => {
+        const cb = document.querySelector(
+          `.modal-merge-cb[data-file-id="${item.fileId}"][data-table-idx="${item.tableIdx}"]`
+        );
+        if (!cb) return;
+        const badge = document.createElement('span');
+        badge.className = 'merge-order-badge';
+        badge.textContent = idx + 1;
+        cb.insertAdjacentElement('afterend', badge);
+      });
+    }
 
     // ============ Generic Helpers ============
     function getHeaderRowCount(tableObj) {
@@ -706,6 +744,7 @@
 
     // ============ Merge ============
     function openMergeModal() {
+      clearMergeOrder();
       const container = document.getElementById('mergeListContainer');
       container.innerHTML = '';
 
@@ -736,6 +775,7 @@
       }
 
       document.getElementById('mergeModal').classList.remove('hidden');
+      updateOrderBadges();
       updateMergeHeaderInfo();
     }
 
@@ -798,37 +838,47 @@
 
     function enforceGroupExclusivity(activeGroup) {
       document.querySelectorAll('.modal-merge-cb').forEach(cb => {
-        if (cb.closest('.col-group') !== activeGroup) cb.checked = false;
+        if (cb.closest('.col-group') !== activeGroup && cb.checked) {
+          cb.checked = false;
+          removeFromMergeOrder(cb.dataset.fileId, parseInt(cb.dataset.tableIdx));
+        }
       });
     }
 
     function setAllInGroup(groupDiv, checked) {
       if (checked) enforceGroupExclusivity(groupDiv);
-      groupDiv.querySelectorAll('.modal-merge-cb').forEach(cb => cb.checked = checked);
+      groupDiv.querySelectorAll('.modal-merge-cb').forEach(cb => {
+        cb.checked = checked;
+        const fid = cb.dataset.fileId;
+        const tIdx = parseInt(cb.dataset.tableIdx);
+        if (checked) addToMergeOrder(fid, tIdx);
+        else removeFromMergeOrder(fid, tIdx);
+      });
+      updateOrderBadges();
       updateMergeHeaderInfo();
     }
 
     function updateMergeHeaderInfo() {
-      const checkedBoxes = document.querySelectorAll('.modal-merge-cb:checked');
+      const order = state.mergeOrder;
       const infoText = document.getElementById('mergeHeaderInfoText');
       if (!infoText) return;
 
-      const getHeaderForCb = (cb) => {
-        const f = findFile(cb.dataset.fileId);
-        return f ? getHeaderRowCount(f.tables[parseInt(cb.dataset.tableIdx)]) : 1;
+      const getHeaderForItem = (item) => {
+        const f = findFile(item.fileId);
+        return f ? getHeaderRowCount(f.tables[item.tableIdx]) : 1;
       };
 
       infoText.innerHTML = '';
 
-      if (checkedBoxes.length === 0) {
-        infoText.textContent = '請先勾選表格，將自動偵測標題列數';
+      if (order.length === 0) {
+        infoText.textContent = '請先勾選表格，將自動偵測標題列數（勾選順序即合併順序）';
         infoText.style.color = '#64748b';
         return;
       }
 
-      const headerRowCount = getHeaderForCb(checkedBoxes[0]);
+      const headerRowCount = getHeaderForItem(order[0]);
 
-      if (checkedBoxes.length < 2) {
+      if (order.length < 2) {
         const num = document.createElement('b');
         num.textContent = headerRowCount;
         infoText.append('已偵測標題 ', num, ' 列（需再勾選至少 1 張表格才能合併）');
@@ -836,50 +886,48 @@
         return;
       }
 
-      let mismatchCb = null;
-      for (const cb of checkedBoxes) {
-        if (getHeaderForCb(cb) !== headerRowCount) { mismatchCb = cb; break; }
+      let mismatch = null;
+      for (const item of order) {
+        if (getHeaderForItem(item) !== headerRowCount) { mismatch = item; break; }
       }
 
       const num = document.createElement('b');
       num.textContent = headerRowCount;
 
-      if (!mismatchCb) {
-        infoText.append('✅ 已偵測標題 ', num, ' 列（所有表格標題列數一致，合併時將保留第一份的標題列）');
+      if (!mismatch) {
+        infoText.append('✅ 已偵測標題 ', num, ' 列（所有表格標題列數一致，合併時將保留第 1 張的標題列）');
         infoText.style.color = '#059669';
       } else {
-        const fObj = findFile(mismatchCb.dataset.fileId);
-        const tIdx = parseInt(mismatchCb.dataset.tableIdx);
-        const hr = getHeaderForCb(mismatchCb);
+        const fObj = findFile(mismatch.fileId);
+        const hr = getHeaderForItem(mismatch);
         infoText.append(
           '⚠️ 標題列數不一致！基準為 ', num,
-          ` 列（${fObj.fileName} 表格 ${fObj.tables[tIdx].tableIndex} 有 ${hr} 列標題），合併時仍以第一份為準`
+          ` 列（${fObj.fileName} 表格 ${fObj.tables[mismatch.tableIdx].tableIndex} 有 ${hr} 列標題），合併時仍以第 1 張為準`
         );
         infoText.style.color = '#d97706';
       }
     }
 
     function executeMergeFromModal() {
-      const checkedBoxes = document.querySelectorAll('.modal-merge-cb:checked');
-      if (checkedBoxes.length < 2) {
+      const order = state.mergeOrder;
+      if (order.length < 2) {
         showToast('請至少在同一個群組內勾選兩張表格才能進行合併', 'warning');
         return;
       }
 
-      const firstCb = checkedBoxes[0];
-      const firstFile = findFile(firstCb.dataset.fileId);
-      const firstTable = firstFile.tables[parseInt(firstCb.dataset.tableIdx)];
+      const firstFile = findFile(order[0].fileId);
+      const firstTable = firstFile.tables[order[0].tableIdx];
       const headerRowCount = getHeaderRowCount(firstTable);
 
       const mergedData = [];
       const sourceBoundaries = [];
-      checkedBoxes.forEach((cb, cbIdx) => {
-        const fileObj = findFile(cb.dataset.fileId);
+      order.forEach((item, idx) => {
+        const fileObj = findFile(item.fileId);
         if (!fileObj) return;
-        const tableObj = fileObj.tables[parseInt(cb.dataset.tableIdx)];
+        const tableObj = fileObj.tables[item.tableIdx];
         if (!tableObj || tableObj.data.length === 0) return;
 
-        if (cbIdx === 0) {
+        if (idx === 0) {
           sourceBoundaries.push(mergedData.length);
           mergedData.push(...structuredClone(tableObj.data));
         } else {
@@ -899,7 +947,7 @@
       }
 
       closeMergeModal();
-      renderMergedResultTab(mergedData, checkedBoxes.length, headerRowCount, sourceBoundaries);
+      renderMergedResultTab(mergedData, order.length, headerRowCount, sourceBoundaries);
     }
 
     function renderMergedResultTab(mergedData, sourceCount, headerRowCount, sourceBoundaries = null) {
@@ -1081,7 +1129,15 @@
       document.getElementById('mergeListContainer').addEventListener('change', (e) => {
         const cb = e.target.closest('.modal-merge-cb');
         if (!cb) return;
-        if (cb.checked) enforceGroupExclusivity(cb.closest('.col-group'));
+        const fid = cb.dataset.fileId;
+        const tIdx = parseInt(cb.dataset.tableIdx);
+        if (cb.checked) {
+          enforceGroupExclusivity(cb.closest('.col-group'));
+          addToMergeOrder(fid, tIdx);
+        } else {
+          removeFromMergeOrder(fid, tIdx);
+        }
+        updateOrderBadges();
         updateMergeHeaderInfo();
       });
     });
