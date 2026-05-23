@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Word 表格提取與多檔合併工具 (V6.7 自訂標題列合併)</title>
-  
+  <title>Word 表格提取與多檔合併工具 (V7.0 全面優化)</title>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.7.1/mammoth.browser.min.js"></script>
   <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
 
@@ -21,12 +21,12 @@
     header { text-align: center; margin-bottom: 25px; }
     h1 { color: #0f172a; font-size: 26px; margin-bottom: 8px; }
     .subtitle { color: #64748b; font-size: 14px; }
-    
+
     section {
       margin-bottom: 20px; padding: 24px; background-color: #fff;
       border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
     }
-    
+
     #drop-zone {
       transition: all 0.2s ease; border: 2px dashed #cbd5e1; min-height: 160px;
       display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -35,7 +35,7 @@
     #drop-zone.drag-over { border-color: #3b82f6; background-color: #eff6ff; }
     #drop-zone p { font-size: 16px; color: #475569; font-weight: 500; margin: 0 0 8px 0; }
     #drop-zone .hint { font-size: 13px; color: #94a3b8; }
-    
+
     .control-panel {
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 10px;
@@ -56,34 +56,37 @@
     .btn-warning:hover { background-color: #d97706; }
     .btn-danger { background-color: #ef4444; }
     .btn-danger:hover { background-color: #dc2626; }
-    
-    /* Word 相關按鈕樣式 */
-    .btn-sm {
-      padding: 4px 8px;
-      font-size: 12px;
-    }
-    
-    .btn-word { background-color: #2b579a; } 
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    .btn-word { background-color: #2b579a; }
     .btn-word:hover { background-color: #1e3f70; }
-    .btn-word-docx { background-color: #1e40af; border: 1px solid #1e3a8a; } 
+    .btn-word-docx { background-color: #1e40af; border: 1px solid #1e3a8a; }
     .btn-word-docx:hover { background-color: #172554; }
-    
+
     #loadingIndicator { text-align: center; margin: 20px; color: #3b82f6; font-weight: 600; }
     .hidden { display: none !important; }
-    
+
     .tabs-header {
       display: flex; overflow-x: auto; gap: 4px; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px;
     }
     .tab-btn {
-      padding: 10px 16px; border: none; background: #f8fafc; cursor: pointer;
+      padding: 10px 14px; border: none; background: #f8fafc; cursor: pointer;
       border-radius: 8px 8px 0 0; font-weight: 600; color: #64748b; white-space: nowrap;
       transition: all 0.2s; border: 1px solid transparent; border-bottom: none;
+      display: inline-flex; align-items: center; gap: 8px;
     }
     .tab-btn:hover { background: #e2e8f0; }
     .tab-btn.active {
       background: #ffffff; color: #3b82f6; border-color: #e2e8f0;
       box-shadow: 0 -2px 5px rgba(0,0,0,0.02); margin-bottom: -2px; border-bottom: 2px solid #ffffff;
     }
+    .tab-close {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      font-size: 12px; color: #94a3b8;
+      transition: all 0.15s ease;
+    }
+    .tab-close:hover { background: #ef4444; color: white; }
     .tab-pane { display: none; }
     .tab-pane.active { display: block; animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -96,9 +99,10 @@
     .table-header {
       background-color: #f8fafc; padding: 12px 16px; border-bottom: 1px solid #e2e8f0;
       display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #334155;
+      flex-wrap: wrap; gap: 10px;
     }
     .table-header-left { display: flex; align-items: center; gap: 15px; }
-    
+
     .table-overflow { overflow-x: auto; padding: 16px; }
     .table-overflow table { width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; }
     .table-overflow th, .table-overflow td {
@@ -108,7 +112,6 @@
     .edit-col-cb { width: 22px; height: 22px; cursor: pointer; }
     .no-data-hint { text-align: center; color: #94a3b8; padding: 40px 0; font-size: 15px; }
 
-    /* 跨檔合併面板專屬樣式 */
     .modal-overlay {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.7); z-index: 1000;
@@ -120,6 +123,7 @@
       display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
       max-height: 85vh;
     }
+    .modal-content.modal-sm { max-width: 420px; }
     .modal-header {
       padding: 20px 24px; border-bottom: 1px solid #e2e8f0;
       display: flex; justify-content: space-between; align-items: center;
@@ -134,6 +138,7 @@
     .col-group-header {
       background: #e0e7ff; padding: 12px 16px; font-weight: 700; color: #4338ca;
       border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
     }
     .merge-item-row { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; cursor: pointer; }
     .merge-item-row:last-child { border-bottom: none; }
@@ -142,6 +147,25 @@
     .merge-item-info { display: flex; flex-direction: column; }
     .merge-item-title { font-weight: 600; color: #1e293b; font-size: 14px; }
     .merge-item-desc { font-size: 13px; color: #64748b; }
+
+    /* Toast */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+      display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+    }
+    .toast {
+      min-width: 240px; max-width: 360px; padding: 12px 16px;
+      border-radius: 8px; color: white; font-size: 14px; font-weight: 500;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+      opacity: 0; transform: translateX(20px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: auto;
+    }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast-info { background: #3b82f6; }
+    .toast-success { background: #10b981; }
+    .toast-warning { background: #f59e0b; }
+    .toast-danger { background: #ef4444; }
   </style>
 </head>
 <body>
@@ -149,7 +173,7 @@
     <h1>Word 表格提取與多檔合併工具</h1>
     <div class="subtitle">支援進階編輯器、跨檔合併，並可單鍵匯出完美無暇的 .doc 與 .docx 檔案</div>
   </header>
-  
+
   <main>
     <section id="upload-section">
       <div id="drop-zone">
@@ -170,7 +194,7 @@
           <button id="clearBtn" class="btn btn-secondary">清除全部</button>
         </div>
       </div>
-      
+
       <div id="tabs-header" class="tabs-header hidden"></div>
       <div id="tabs-content" class="tabs-content">
         <div class="no-data-hint" id="noDataHint">尚無資料，請先拖曳或上傳 Word 檔案。</div>
@@ -184,146 +208,363 @@
         <h3>🗂️ 跨檔合併中心</h3>
       </div>
       <div class="modal-body" id="mergeListContainer"></div>
- <div class="modal-body" style="border-top: 1px solid #e2e8f0; padding: 16px 24px; background: #ffffff;">
- <div id="mergeHeaderInfo" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
- <span style="font-weight: 600; color: #334155; white-space: nowrap;">📋 標題列：</span>
- <span id="mergeHeaderInfoText" style="font-size: 14px; color: #64748b;">請先勾選表格，將自動偵測標題列數</span>
- </div>
- </div>
+      <div class="modal-body" style="border-top: 1px solid #e2e8f0; padding: 16px 24px; background: #ffffff;">
+        <div id="mergeHeaderInfo" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span style="font-weight: 600; color: #334155; white-space: nowrap;">📋 標題列：</span>
+          <span id="mergeHeaderInfoText" style="font-size: 14px; color: #64748b;">請先勾選表格，將自動偵測標題列數</span>
+        </div>
+      </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeMergeModal()">取消</button>
-        <button class="btn btn-warning" onclick="executeMergeFromModal()">🚀 執行合併</button>
+        <button class="btn btn-secondary" id="mergeCancelBtn">取消</button>
+        <button class="btn btn-warning" id="mergeExecuteBtn">🚀 執行合併</button>
       </div>
     </div>
   </div>
 
+  <div id="confirmModal" class="modal-overlay hidden">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h3 id="confirmModalTitle">確認</h3>
+      </div>
+      <div class="modal-body" style="background: #ffffff;">
+        <div id="confirmModalText" style="font-size: 14px; color: #334155;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-confirm-cancel>取消</button>
+        <button class="btn btn-danger" data-confirm-ok>確定</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
   <script>
-    let allParsedFiles = []; 
-    let fileCounter = 0;
+    'use strict';
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const dropZone = document.getElementById('drop-zone');
-      const fileInput = document.getElementById('file-input');
-      const clearBtn = document.getElementById('clearBtn');
-      const exportAllBtn = document.getElementById('exportAllBtn');
-      const openMergeHubBtn = document.getElementById('openMergeHubBtn');
+    // ============ State ============
+    const state = {
+      files: [],           // [{ fileId, fileName, tables: [...] }]
+      fileCounter: 0,
+      undoStacks: {},      // { "fileId:tableIdx": [previousData, ...] }
+    };
 
-      dropZone.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleFiles(e.target.files);
-      });
-
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, e => {
-          e.preventDefault(); e.stopPropagation();
-        }, false);
-      });
-
-      dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-over'));
-      dropZone.addEventListener('dragover', () => dropZone.classList.add('drag-over'));
-      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-      dropZone.addEventListener('drop', (e) => {
-        dropZone.classList.remove('drag-over');
-        const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.docx'));
-        if (files.length > 0) handleFiles(files);
-        else alert('請上傳有效的 Word (.docx) 檔案！');
-      });
-
-      clearBtn.addEventListener('click', clearAll);
-      exportAllBtn.addEventListener('click', exportAllData);
-      openMergeHubBtn.addEventListener('click', openMergeModal);
-    });
-
-    function clearAll() {
-      allParsedFiles = [];
-      fileCounter = 0;
-      document.getElementById('tabs-header').innerHTML = '';
-      document.getElementById('tabs-header').classList.add('hidden');
-      document.getElementById('tabs-content').innerHTML = '<div class="no-data-hint" id="noDataHint">尚無資料，請先拖曳或上傳 Word 檔案。</div>';
-      document.getElementById('globalActionGroup').classList.add('hidden');
-      document.getElementById('file-input').value = "";
+    // ============ Generic Helpers ============
+    function getHeaderRowCount(tableObj) {
+      return (tableObj && tableObj.headerRowCount) || 1;
     }
 
-    async function handleFiles(files) {
-      toggleLoading(true);
-      document.getElementById('noDataHint')?.remove();
-      document.getElementById('globalActionGroup').classList.remove('hidden');
-      document.getElementById('tabs-header').classList.remove('hidden');
-
-      for (let i = 0; i < files.length; i++) {
-        await processSingleFile(files[i]);
-      }
-      
-      toggleLoading(false);
-      if(allParsedFiles.length > 0) switchTab(allParsedFiles[allParsedFiles.length - 1].fileId);
+    function findFile(fileId) {
+      return state.files.find(f => f.fileId === fileId);
     }
 
-    function processSingleFile(file) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        const fileName = file.name.replace(/\.docx$/i, '');
-        const currentFileId = 'file_' + fileCounter++;
+    function findCard(fileId, tableIdx) {
+      return document.querySelector(`#pane_${fileId} [data-table-idx="${tableIdx}"]`);
+    }
 
-        reader.onload = function(event) {
-          mammoth.convertToHtml({ arrayBuffer: event.target.result })
-            .then(result => {
-              parseHtmlToData(result.value, fileName, currentFileId);
-              resolve();
-            })
-            .catch(err => {
-              console.error(err);
-              alert(`解析 ${fileName} 時發生錯誤。`);
-              resolve();
-            });
-        };
-        reader.readAsArrayBuffer(file);
-      });
+    function sanitizeFilename(name) {
+      return String(name).replace(/[/\\?%*:|"<>]/g, '_');
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadJson(data, filename) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' });
+      downloadBlob(blob, filename);
     }
 
     function toggleLoading(show) {
       document.getElementById('loadingIndicator').classList.toggle('hidden', !show);
     }
 
-    function buildAutoMergedHtmlTable(matrix, headerRowCount = 1) {
+    // ============ Toast & Confirm ============
+    function showToast(message, variant = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${variant}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showConfirm(message, title = '確認') {
+      return new Promise(resolve => {
+        const modal = document.getElementById('confirmModal');
+        document.getElementById('confirmModalTitle').textContent = title;
+        document.getElementById('confirmModalText').textContent = message;
+        modal.classList.remove('hidden');
+
+        const okBtn = modal.querySelector('[data-confirm-ok]');
+        const cancelBtn = modal.querySelector('[data-confirm-cancel]');
+
+        const cleanup = (result) => {
+          modal.classList.add('hidden');
+          okBtn.onclick = null;
+          cancelBtn.onclick = null;
+          resolve(result);
+        };
+        okBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+      });
+    }
+
+    // ============ File handling & Parsing ============
+    async function handleFiles(files) {
+      toggleLoading(true);
+      document.getElementById('noDataHint')?.remove();
+      document.getElementById('globalActionGroup').classList.remove('hidden');
+      document.getElementById('tabs-header').classList.remove('hidden');
+
+      const results = await Promise.all(Array.from(files).map(parseFileToObj));
+      results.forEach(fileObj => {
+        if (fileObj) renderFileTab(fileObj);
+      });
+
+      toggleLoading(false);
+      if (state.files.length > 0) {
+        switchTab(state.files[state.files.length - 1].fileId);
+      }
+    }
+
+    function parseFileToObj(file) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        const fileName = file.name.replace(/\.docx$/i, '');
+        const fileId = 'file_' + state.fileCounter++;
+
+        reader.onload = (event) => {
+          mammoth.convertToHtml({ arrayBuffer: event.target.result })
+            .then(result => resolve(parseHtmlToData(result.value, fileName, fileId)))
+            .catch(err => {
+              console.error(err);
+              showToast(`解析 ${fileName} 時發生錯誤`, 'danger');
+              resolve(null);
+            });
+        };
+        reader.onerror = () => {
+          showToast(`讀取 ${fileName} 失敗`, 'danger');
+          resolve(null);
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function parseHtmlToData(htmlContent, fileName, fileId) {
+      const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+      const htmlTables = doc.querySelectorAll('table');
+      const fileObj = { fileId, fileName, tables: [] };
+
+      htmlTables.forEach((tableEl, index) => {
+        const rows = tableEl.querySelectorAll('tr');
+        const grid = [];
+        let autoHeaderRowCount = 0;
+        let headerStreak = true;
+
+        rows.forEach((row, rIdx) => {
+          if (!grid[rIdx]) grid[rIdx] = [];
+          const cells = row.querySelectorAll('th, td');
+          let hasTh = false;
+          let cIdx = 0;
+
+          cells.forEach(cell => {
+            if (cell.tagName === 'TH') hasTh = true;
+            while (grid[rIdx][cIdx] !== undefined) cIdx++;
+            const rowspan = parseInt(cell.getAttribute('rowspan')) || 1;
+            const colspan = parseInt(cell.getAttribute('colspan')) || 1;
+            const cleanText = (cell.textContent || '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+            for (let r = 0; r < rowspan; r++) {
+              for (let c = 0; c < colspan; c++) {
+                if (!grid[rIdx + r]) grid[rIdx + r] = [];
+                grid[rIdx + r][cIdx + c] = cleanText;
+              }
+            }
+            cIdx += colspan;
+          });
+
+          if (headerStreak && hasTh) autoHeaderRowCount++;
+          else headerStreak = false;
+        });
+
+        const rowsJson = grid.filter(r => r && r.length > 0);
+        if (rowsJson.length === 0) return;
+
+        // 處理鋸齒狀資料：以最大長度為基準補空字串，確保表格為矩形
+        const colCount = rowsJson.reduce((max, r) => Math.max(max, r.length), 0);
+        rowsJson.forEach(r => {
+          while (r.length < colCount) r.push('');
+          for (let i = 0; i < colCount; i++) if (r[i] === undefined) r[i] = '';
+        });
+
+        if (autoHeaderRowCount === 0) autoHeaderRowCount = 1;
+        if (autoHeaderRowCount >= rowsJson.length) autoHeaderRowCount = 1;
+
+        fileObj.tables.push({
+          tableIndex: index + 1,
+          rowCount: rowsJson.length,
+          colCount,
+          data: rowsJson,
+          headerRowCount: autoHeaderRowCount,
+        });
+      });
+
+      return fileObj;
+    }
+
+    // ============ Rendering ============
+    function renderFileTab(fileObj) {
+      state.files.push(fileObj);
+
+      const tabsHeader = document.getElementById('tabs-header');
+      const tabBtn = document.createElement('button');
+      tabBtn.className = 'tab-btn';
+      tabBtn.id = `btn_${fileObj.fileId}`;
+      tabBtn.dataset.action = 'switch-tab';
+      tabBtn.dataset.fileId = fileObj.fileId;
+
+      const label = document.createElement('span');
+      label.textContent = `${fileObj.fileName} (${fileObj.tables.length})`;
+      tabBtn.appendChild(label);
+
+      const closeBtn = document.createElement('span');
+      closeBtn.className = 'tab-close';
+      closeBtn.textContent = '✕';
+      closeBtn.dataset.action = 'remove-file';
+      closeBtn.dataset.fileId = fileObj.fileId;
+      closeBtn.title = '移除此檔案';
+      tabBtn.appendChild(closeBtn);
+
+      tabsHeader.appendChild(tabBtn);
+
+      const tabPane = document.createElement('div');
+      tabPane.className = 'tab-pane';
+      tabPane.id = `pane_${fileObj.fileId}`;
+
+      if (fileObj.tables.length === 0) {
+        const hint = document.createElement('div');
+        hint.className = 'no-data-hint';
+        hint.textContent = '此檔案未偵測到表格結構。';
+        tabPane.appendChild(hint);
+      } else {
+        fileObj.tables.forEach((tableObj, idx) => {
+          const card = document.createElement('div');
+          card.className = 'table-card';
+          card.dataset.tableIdx = idx;
+          renderTableCardContents(card, fileObj, tableObj, idx, false);
+          tabPane.appendChild(card);
+        });
+      }
+      document.getElementById('tabs-content').appendChild(tabPane);
+    }
+
+    function makeBtn(text, cls, action, fileId, tableIdx) {
+      const btn = document.createElement('button');
+      btn.className = `btn ${cls} btn-sm`;
+      btn.textContent = text;
+      btn.dataset.action = action;
+      btn.dataset.fileId = fileId;
+      btn.dataset.tableIdx = tableIdx;
+      return btn;
+    }
+
+    function renderTableCardContents(cardEl, fileObj, tableObj, tableIdx, isEditMode) {
+      cardEl.innerHTML = '';
+      cardEl.classList.toggle('editing-status', isEditMode);
+
+      const headerRowCount = getHeaderRowCount(tableObj);
+      const tableHeader = document.createElement('div');
+      tableHeader.className = 'table-header';
+
+      const leftDiv = document.createElement('div');
+      leftDiv.className = 'table-header-left';
+      const titleSpan = document.createElement('span');
+      const rightDiv = document.createElement('div');
+      rightDiv.className = 'btn-group';
+
+      if (!isEditMode) {
+        titleSpan.textContent = `表格 ${tableObj.tableIndex} (共 ${tableObj.rowCount} 列, ${tableObj.colCount} 欄)`;
+        leftDiv.appendChild(titleSpan);
+
+        const undoKey = `${fileObj.fileId}:${tableIdx}`;
+        if ((state.undoStacks[undoKey]?.length || 0) > 0) {
+          rightDiv.appendChild(makeBtn('↩️ 復原', 'btn-secondary', 'undo-delete', fileObj.fileId, tableIdx));
+        }
+        rightDiv.appendChild(makeBtn('🛠️ 編輯', 'btn-warning', 'edit-mode', fileObj.fileId, tableIdx));
+        rightDiv.appendChild(makeBtn('JSON', 'btn-secondary', 'export-json', fileObj.fileId, tableIdx));
+        rightDiv.appendChild(makeBtn('📄 .doc', 'btn-word', 'export-doc', fileObj.fileId, tableIdx));
+        rightDiv.appendChild(makeBtn('📄 .docx', 'btn-word-docx', 'export-docx', fileObj.fileId, tableIdx));
+      } else {
+        titleSpan.style.color = '#ef4444';
+        titleSpan.style.fontWeight = 'bold';
+        titleSpan.textContent = '⚠️ 編輯模式中（請勾選要刪除的列）';
+        leftDiv.appendChild(titleSpan);
+
+        rightDiv.appendChild(makeBtn('🗑️ 刪除選取列', 'btn-danger', 'delete-rows', fileObj.fileId, tableIdx));
+        rightDiv.appendChild(makeBtn('💾 完成', 'btn-success', 'exit-edit', fileObj.fileId, tableIdx));
+      }
+
+      tableHeader.append(leftDiv, rightDiv);
+
+      const tableOverflow = document.createElement('div');
+      tableOverflow.className = 'table-overflow';
+      const tableEl = isEditMode
+        ? buildFlattenedEditHtmlTable(tableObj.data, cardEl, headerRowCount)
+        : buildAutoMergedHtmlTable(tableObj.data, headerRowCount, tableObj.sourceBoundaries);
+      tableOverflow.appendChild(tableEl);
+
+      cardEl.appendChild(tableHeader);
+      cardEl.appendChild(tableOverflow);
+    }
+
+    function buildAutoMergedHtmlTable(matrix, headerRowCount = 1, boundaries = null) {
       const table = document.createElement('table');
       if (!matrix || matrix.length === 0) return table;
-      
+
       const rows = matrix.length;
       const cols = matrix[0].length;
       const skip = Array.from({ length: rows }, () => Array(cols).fill(false));
+      const boundarySet = boundaries && boundaries.length ? new Set(boundaries) : null;
 
       for (let r = 0; r < rows; r++) {
         const tr = document.createElement('tr');
         for (let c = 0; c < cols; c++) {
-          if (skip[r][c]) continue; 
+          if (skip[r][c]) continue;
           const text = matrix[r][c];
-          
+
           let colspan = 1;
           while (c + colspan < cols && matrix[r][c + colspan] === text && !skip[r][c + colspan]) {
             colspan++;
           }
-          
+
           let rowspan = 1;
-          let canExpandDown = true;
-          while (r + rowspan < rows) {
+          outer: while (r + rowspan < rows) {
+            // 不跨越來源表格邊界（合併結果才有）
+            if (boundarySet && boundarySet.has(r + rowspan)) break;
             for (let i = 0; i < colspan; i++) {
-              if (matrix[r + rowspan][c + i] !== text || skip[r + rowspan][c + i]) {
-                canExpandDown = false;
-                break;
-              }
+              if (matrix[r + rowspan][c + i] !== text || skip[r + rowspan][c + i]) break outer;
             }
-            if (!canExpandDown) break;
             rowspan++;
           }
-          
+
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {
               skip[r + i][c + j] = true;
             }
           }
-          
+
           const cell = document.createElement(r < headerRowCount ? 'th' : 'td');
-          cell.innerText = text;
+          cell.textContent = text;
           if (colspan > 1) cell.setAttribute('colspan', colspan);
           if (rowspan > 1) cell.setAttribute('rowspan', rowspan);
           tr.appendChild(cell);
@@ -345,9 +586,9 @@
           chkAll.type = 'checkbox';
           chkAll.className = 'edit-col-cb';
           chkAll.title = '全選';
-          chkAll.onchange = (e) => {
+          chkAll.addEventListener('change', (e) => {
             cardEl.querySelectorAll('.row-delete-cb').forEach(cb => cb.checked = e.target.checked);
-          };
+          });
           cellCheck.appendChild(chkAll);
         } else {
           const chk = document.createElement('input');
@@ -360,7 +601,7 @@
 
         rowArray.forEach(text => {
           const cell = document.createElement(rIdx < headerRowCount ? 'th' : 'td');
-          cell.innerText = text;
+          cell.textContent = text;
           tr.appendChild(cell);
         });
         table.appendChild(tr);
@@ -368,504 +609,482 @@
       return table;
     }
 
-    function renderTableCardContents(cardEl, fileObj, tableObj, tableIdx, isEditMode) {
-      cardEl.innerHTML = ''; 
-      if (isEditMode) cardEl.classList.add('editing-status');
-      else cardEl.classList.remove('editing-status');
-
-      const headerRowCount = tableObj.headerRowCount || 1;
-
-      const tableHeader = document.createElement('div');
-      tableHeader.className = 'table-header';
-      
-      if (!isEditMode) {
-        tableHeader.innerHTML = `
-          <div class="table-header-left">
-            <span>表格 ${tableObj.tableIndex} (共 ${tableObj.rowCount} 列, ${tableObj.colCount} 欄)</span>
-          </div>
-          <div class="btn-group">
-            <button class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;" onclick="switchCardMode('${fileObj.fileId}', ${tableIdx}, true)">🛠️ 編輯</button>
-            <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="exportSingleTable('${fileObj.fileId}', ${tableIdx})">JSON</button>
-            <button class="btn btn-word" style="padding: 5px 10px; font-size: 12px;" onclick="exportTableToWord('${fileObj.fileId}', ${tableIdx})">📄 .doc</button>
-            <button class="btn btn-word-docx" style="padding: 5px 10px; font-size: 12px;" onclick="exportTableToRealDocx('${fileObj.fileId}', ${tableIdx})">📄 .docx</button>
-          </div>
-        `;
-      } else {
-        tableHeader.innerHTML = `
-          <div class="table-header-left">
-            <span style="color: #ef4444; font-weight: bold;">⚠️ 編輯模式中（請勾選要刪除的列）</span>
-          </div>
-          <div class="btn-group">
-            <button class="btn btn-danger" style="padding: 5px 12px; font-size: 12px;" onclick="deleteSelectedRows('${fileObj.fileId}', ${tableIdx})">🗑️ 刪除選取列</button>
-            <button class="btn btn-success" style="padding: 5px 12px; font-size: 12px;" onclick="switchCardMode('${fileObj.fileId}', ${tableIdx}, false)">💾 完成</button>
-          </div>
-        `;
-      }
-      
-      const tableOverflow = document.createElement('div');
-      tableOverflow.className = 'table-overflow';
-      const tableEl = isEditMode ? buildFlattenedEditHtmlTable(tableObj.data, cardEl, tableObj.headerRowCount || 1) : buildAutoMergedHtmlTable(tableObj.data, headerRowCount);
-      tableOverflow.appendChild(tableEl);
-      cardEl.appendChild(tableHeader);
-      cardEl.appendChild(tableOverflow);
+    // ============ Tab Actions ============
+    function switchTab(fileId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+      document.getElementById(`btn_${fileId}`)?.classList.add('active');
+      document.getElementById(`pane_${fileId}`)?.classList.add('active');
     }
 
     function switchCardMode(fileId, tableIdx, isEditMode) {
-      const fileObj = allParsedFiles.find(f => f.fileId === fileId);
+      const fileObj = findFile(fileId);
       if (!fileObj) return;
-      const tableObj = fileObj.tables[tableIdx];
-      const paneId = fileId === 'merged_tab' ? 'pane_merged_tab' : `pane_${fileId}`;
-      const pane = document.getElementById(paneId);
-      const card = pane.querySelector(`[data-table-idx="${tableIdx}"]`);
-      renderTableCardContents(card, fileObj, tableObj, tableIdx, isEditMode);
+      const card = findCard(fileId, tableIdx);
+      if (!card) return;
+      renderTableCardContents(card, fileObj, fileObj.tables[tableIdx], tableIdx, isEditMode);
     }
 
-    function deleteSelectedRows(fileId, tableIdx) {
-      const fileObj = allParsedFiles.find(f => f.fileId === fileId);
+    async function deleteSelectedRows(fileId, tableIdx) {
+      const fileObj = findFile(fileId);
       if (!fileObj) return;
       const tableObj = fileObj.tables[tableIdx];
-      const paneId = fileId === 'merged_tab' ? 'pane_merged_tab' : `pane_${fileId}`;
-      const pane = document.getElementById(paneId);
-      const card = pane.querySelector(`[data-table-idx="${tableIdx}"]`);
+      const card = findCard(fileId, tableIdx);
       const checkedBoxes = card.querySelectorAll('.row-delete-cb:checked');
 
-      if (checkedBoxes.length === 0) return alert('請先勾選想要刪除的資料列！');
-      if (!confirm(`確定要刪除這 ${checkedBoxes.length} 列資料嗎？`)) return;
+      if (checkedBoxes.length === 0) {
+        showToast('請先勾選想要刪除的資料列', 'warning');
+        return;
+      }
+      if (!await showConfirm(`確定要刪除這 ${checkedBoxes.length} 列資料嗎？`, '刪除確認')) return;
 
-      const targetIndices = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.rowIndex)).sort((a, b) => b - a);
+      const undoKey = `${fileId}:${tableIdx}`;
+      if (!state.undoStacks[undoKey]) state.undoStacks[undoKey] = [];
+      state.undoStacks[undoKey].push(structuredClone(tableObj.data));
+      if (state.undoStacks[undoKey].length > 10) state.undoStacks[undoKey].shift();
+
+      const targetIndices = Array.from(checkedBoxes)
+        .map(cb => parseInt(cb.dataset.rowIndex))
+        .sort((a, b) => b - a);
       targetIndices.forEach(idx => tableObj.data.splice(idx, 1));
       tableObj.rowCount = tableObj.data.length;
       renderTableCardContents(card, fileObj, tableObj, tableIdx, true);
     }
 
-    function parseHtmlToData(htmlContent, fileName, fileId) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, 'text/html');
-      const htmlTables = doc.querySelectorAll('table');
-      
-      const fileObj = { fileId: fileId, fileName: fileName, tables: [] };
+    function undoDelete(fileId, tableIdx) {
+      const undoKey = `${fileId}:${tableIdx}`;
+      const stack = state.undoStacks[undoKey];
+      if (!stack || stack.length === 0) return;
 
-      const tabsHeader = document.getElementById('tabs-header');
-      const tabBtn = document.createElement('button');
-      tabBtn.className = 'tab-btn';
-      tabBtn.id = `btn_${fileId}`;
-      tabBtn.innerText = fileName + ` (${htmlTables.length})`;
-      tabBtn.onclick = () => switchTab(fileId);
-      tabsHeader.appendChild(tabBtn);
+      const fileObj = findFile(fileId);
+      if (!fileObj) return;
+      const tableObj = fileObj.tables[tableIdx];
+      tableObj.data = stack.pop();
+      tableObj.rowCount = tableObj.data.length;
+      const card = findCard(fileId, tableIdx);
+      renderTableCardContents(card, fileObj, tableObj, tableIdx, false);
+      showToast(`已復原刪除（剩 ${stack.length} 步可復原）`, 'info');
+    }
 
-      const tabsContent = document.getElementById('tabs-content');
-      const tabPane = document.createElement('div');
-      tabPane.className = 'tab-pane';
-      tabPane.id = `pane_${fileId}`;
+    async function removeFile(fileId) {
+      const fileObj = findFile(fileId);
+      if (!fileObj) return;
+      if (!await showConfirm(`確定要移除「${fileObj.fileName}」嗎？`, '移除檔案')) return;
 
-      if (htmlTables.length === 0) {
-        tabPane.innerHTML = `<div class="no-data-hint">此檔案未偵測到表格結構。</div>`;
+      const idx = state.files.findIndex(f => f.fileId === fileId);
+      state.files.splice(idx, 1);
+      document.getElementById(`btn_${fileId}`)?.remove();
+      document.getElementById(`pane_${fileId}`)?.remove();
+      Object.keys(state.undoStacks).forEach(k => {
+        if (k.startsWith(`${fileId}:`)) delete state.undoStacks[k];
+      });
+
+      if (state.files.length === 0) {
+        clearAll();
       } else {
-        htmlTables.forEach((tableEl, index) => {
-          const rowsJson = [];
-          const grid = [];
-          const rows = tableEl.querySelectorAll('tr');
-
-          rows.forEach((row, rIdx) => {
-            if (!grid[rIdx]) grid[rIdx] = [];
-            let cIdx = 0;
-            const cells = row.querySelectorAll('th, td');
-            cells.forEach(cell => {
-              while (grid[rIdx][cIdx] !== undefined) cIdx++;
-              const rowspan = parseInt(cell.getAttribute('rowspan')) || 1;
-              const colspan = parseInt(cell.getAttribute('colspan')) || 1;
-              let cleanText = cell.textContent || "";
-              cleanText = cleanText.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
-              for (let r = 0; r < rowspan; r++) {
-                for (let c = 0; c < colspan; c++) {
-                  if (!grid[rIdx + r]) grid[rIdx + r] = [];
-                  grid[rIdx + r][cIdx + c] = cleanText; 
-                }
-              }
-              cIdx += colspan;
-            });
-          });
-
-          grid.forEach(rowArray => {
-            if (rowArray && rowArray.length > 0) rowsJson.push(rowArray);
-          });
-
-          if(rowsJson.length === 0) return;
-
- // 偵測標題列數：計算連續含有 <th> 的列數
- let autoHeaderRowCount = 0;
- const allRows = tableEl.querySelectorAll('tr');
- for (let ri = 0; ri < allRows.length; ri++) {
- const thCells = allRows[ri].querySelectorAll('th');
- if (thCells.length > 0) {
- autoHeaderRowCount++;
- } else {
- break;
- }
- }
- // 如果整個表都是 th 或沒有 th，保底設為 1（或 0）
- if (autoHeaderRowCount === 0) autoHeaderRowCount = 1;
- if (autoHeaderRowCount >= rowsJson.length) autoHeaderRowCount = 1;
-
- const tableObj = {
- tableIndex: index + 1,
- rowCount: rowsJson.length,
- colCount: rowsJson[0].length,
- data: rowsJson,
- headerRowCount: autoHeaderRowCount
- };
-          fileObj.tables.push(tableObj);
-
-          const tableCard = document.createElement('div');
-          tableCard.className = 'table-card';
-          tableCard.dataset.tableIdx = index;
-          renderTableCardContents(tableCard, fileObj, tableObj, index, false);
-          tabPane.appendChild(tableCard);
-        });
-      }
-
-      tabsContent.appendChild(tabPane);
-      allParsedFiles.push(fileObj);
-    }
-
-    function switchTab(fileId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-      const btn = document.getElementById(`btn_${fileId}`);
-      const pane = document.getElementById(`pane_${fileId}`);
-      if(btn && pane) {
-        btn.classList.add('active');
-        pane.classList.add('active');
+        switchTab(state.files[state.files.length - 1].fileId);
       }
     }
 
+    function clearAll() {
+      state.files = [];
+      state.fileCounter = 0;
+      state.undoStacks = {};
+      const tabsHeader = document.getElementById('tabs-header');
+      tabsHeader.innerHTML = '';
+      tabsHeader.classList.add('hidden');
+      const tabsContent = document.getElementById('tabs-content');
+      tabsContent.innerHTML = '';
+      const hint = document.createElement('div');
+      hint.className = 'no-data-hint';
+      hint.id = 'noDataHint';
+      hint.textContent = '尚無資料，請先拖曳或上傳 Word 檔案。';
+      tabsContent.appendChild(hint);
+      document.getElementById('globalActionGroup').classList.add('hidden');
+      document.getElementById('file-input').value = '';
+    }
+
+    // ============ Merge ============
     function openMergeModal() {
       const container = document.getElementById('mergeListContainer');
       container.innerHTML = '';
-      
+
       const tablesByCol = {};
       let hasData = false;
 
- allParsedFiles.forEach(f => {
- if (f.fileId === 'merged_tab') return; 
- f.tables.forEach((t, idx) => {
- hasData = true;
- const col = t.colCount;
- if (!tablesByCol[col]) tablesByCol[col] = [];
- tablesByCol[col].push({ fileId: f.fileId, fileName: f.fileName, tableIdx: idx, rows: t.rowCount, tableNum: t.tableIndex, headerRowCount: t.headerRowCount || 1 });
- });
- });
+      state.files.forEach(f => {
+        if (f.fileId === 'merged_tab') return;
+        f.tables.forEach((t, idx) => {
+          hasData = true;
+          if (!tablesByCol[t.colCount]) tablesByCol[t.colCount] = [];
+          tablesByCol[t.colCount].push({
+            fileId: f.fileId, fileName: f.fileName, tableIdx: idx,
+            rows: t.rowCount, tableNum: t.tableIndex, headerRowCount: getHeaderRowCount(t),
+          });
+        });
+      });
 
       if (!hasData) {
-        container.innerHTML = '<div class="no-data-hint">目前還沒有載入任何可合併的表格。</div>';
+        const hint = document.createElement('div');
+        hint.className = 'no-data-hint';
+        hint.textContent = '目前還沒有載入任何可合併的表格。';
+        container.appendChild(hint);
       } else {
-        Object.keys(tablesByCol).sort((a,b)=>b-a).forEach(colCount => {
-          const groupList = tablesByCol[colCount];
-          const groupDiv = document.createElement('div');
-          groupDiv.className = 'col-group';
-          
-          groupDiv.innerHTML = `
-            <div class="col-group-header">
-              <span>🗂️ 共 ${colCount} 欄的表格群組</span>
-              <span style="font-size: 13px; font-weight: normal; color: #64748b;">(此區塊的表格可互相合併)</span>
-              <div class="btn-group" style="gap: 8px;">
-                <button class="btn btn-secondary btn-sm" onclick="selectAllInGroup(this)">全選</button>
-                <button class="btn btn-secondary btn-sm" onclick="deselectAllInGroup(this)">全不選</button>
-              </div>
-            </div>
-          `;
-
- groupList.forEach(item => {
- const rowLabel = document.createElement('label');
- rowLabel.className = 'merge-item-row';
- rowLabel.innerHTML = `
- <input type="checkbox" class="modal-merge-cb" data-file-id="${item.fileId}" data-table-idx="${item.tableIdx}">
- <div class="merge-item-info">
- <span class="merge-item-title">${item.fileName}</span>
- <span class="merge-item-desc">表格 ${item.tableNum} (包含 ${item.rows} 列資料，標題 ${item.headerRowCount || 1} 列)</span>
- </div>
- `;
- const cb = rowLabel.querySelector('input');
- cb.addEventListener('change', (e) => {
- if (e.target.checked) {
- document.querySelectorAll('.modal-merge-cb').forEach(otherCb => {
- if (otherCb.closest('.col-group') !== groupDiv) {
- otherCb.checked = false; 
- }
- });
- }
- updateMergeHeaderInfo();
- });
- groupDiv.appendChild(rowLabel);
- });
-          container.appendChild(groupDiv);
+        Object.keys(tablesByCol).sort((a, b) => b - a).forEach(colCount => {
+          container.appendChild(buildColGroup(colCount, tablesByCol[colCount]));
         });
       }
 
- document.getElementById('mergeModal').classList.remove('hidden');
- updateMergeHeaderInfo();
- }
+      document.getElementById('mergeModal').classList.remove('hidden');
+      updateMergeHeaderInfo();
+    }
+
+    function buildColGroup(colCount, groupList) {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'col-group';
+
+      const header = document.createElement('div');
+      header.className = 'col-group-header';
+
+      const headerLeft = document.createElement('span');
+      headerLeft.textContent = `🗂️ 共 ${colCount} 欄的表格群組`;
+
+      const headerHint = document.createElement('span');
+      headerHint.style.cssText = 'font-size: 13px; font-weight: normal; color: #64748b;';
+      headerHint.textContent = '(此區塊的表格可互相合併)';
+
+      const headerBtnGroup = document.createElement('div');
+      headerBtnGroup.className = 'btn-group';
+      const selAll = document.createElement('button');
+      selAll.className = 'btn btn-secondary btn-sm';
+      selAll.textContent = '全選';
+      selAll.dataset.action = 'select-all-group';
+      const desAll = document.createElement('button');
+      desAll.className = 'btn btn-secondary btn-sm';
+      desAll.textContent = '全不選';
+      desAll.dataset.action = 'deselect-all-group';
+      headerBtnGroup.append(selAll, desAll);
+
+      header.append(headerLeft, headerHint, headerBtnGroup);
+      groupDiv.appendChild(header);
+
+      groupList.forEach(item => {
+        const row = document.createElement('label');
+        row.className = 'merge-item-row';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'modal-merge-cb';
+        cb.dataset.fileId = item.fileId;
+        cb.dataset.tableIdx = item.tableIdx;
+        const info = document.createElement('div');
+        info.className = 'merge-item-info';
+        const title = document.createElement('span');
+        title.className = 'merge-item-title';
+        title.textContent = item.fileName;
+        const desc = document.createElement('span');
+        desc.className = 'merge-item-desc';
+        desc.textContent = `表格 ${item.tableNum} (包含 ${item.rows} 列資料，標題 ${item.headerRowCount} 列)`;
+        info.append(title, desc);
+        row.append(cb, info);
+        groupDiv.appendChild(row);
+      });
+
+      return groupDiv;
+    }
 
     function closeMergeModal() {
       document.getElementById('mergeModal').classList.add('hidden');
     }
 
-function updateMergeHeaderInfo() {
- const checkedBoxes = document.querySelectorAll('.modal-merge-cb:checked');
- const infoText = document.getElementById('mergeHeaderInfoText');
- if (!infoText) return;
-
- if (checkedBoxes.length < 2) {
- if (checkedBoxes.length === 0) {
- infoText.innerHTML = '請先勾選表格，將自動偵測標題列數';
- infoText.style.color = '#64748b';
- } else {
- const cb = checkedBoxes[0];
- const fileObj = allParsedFiles.find(f => f.fileId === cb.dataset.fileId);
- const headerCount = fileObj ? (fileObj.tables[parseInt(cb.dataset.tableIdx)].headerRowCount || 1) : 1;
- infoText.innerHTML = `已偵測標題 <b>${headerCount}</b> 列（需再勾選至少 1 張表格才能合併）`;
- infoText.style.color = '#64748b';
- }
- return;
- }
-
- // 取得第一份表格的 headerRowCount 作為基準
- const firstCb = checkedBoxes[0];
- const firstFileObj = allParsedFiles.find(f => f.fileId === firstCb.dataset.fileId);
- const headerRowCount = firstFileObj ? (firstFileObj.tables[parseInt(firstCb.dataset.tableIdx)].headerRowCount || 1) : 1;
-
- // 檢查所有勾選表格的 headerRowCount 是否一致
- let allSame = true;
- let mismatchInfo = '';
- checkedBoxes.forEach(cb => {
- const fObj = allParsedFiles.find(f => f.fileId === cb.dataset.fileId);
- const hr = fObj ? (fObj.tables[parseInt(cb.dataset.tableIdx)].headerRowCount || 1) : 1;
- if (hr !== headerRowCount) {
- allSame = false;
- mismatchInfo = `（${fObj.fileName} 表格 ${fObj.tables[parseInt(cb.dataset.tableIdx)].tableIndex} 有 ${hr} 列標題）`;
- }
- });
-
- if (allSame) {
- infoText.innerHTML = `✅ 已偵測標題 <b>${headerRowCount}</b> 列（所有表格標題列數一致，合併時將保留第一份的標題列）`;
- infoText.style.color = '#059669';
- } else {
- infoText.innerHTML = `⚠️ 標題列數不一致！基準為 <b>${headerRowCount}</b> 列 ${mismatchInfo}，合併時仍以第一份為準`;
- infoText.style.color = '#d97706';
- }
-}
-
-function executeMergeFromModal() {
- const checkedBoxes = document.querySelectorAll('.modal-merge-cb:checked');
- if (checkedBoxes.length < 2) {
- return alert("請至少在同一個群組內勾選兩張表格才能進行合併！");
- }
-
- // 自動從第一份表格取得 headerRowCount
- const firstCb = checkedBoxes[0];
- const firstFileObj = allParsedFiles.find(f => f.fileId === firstCb.dataset.fileId);
- const headerRowCount = firstFileObj ? (firstFileObj.tables[parseInt(firstCb.dataset.tableIdx)].headerRowCount || 1) : 1;
-
- let mergedData = [];
- let mergedCount = 0;
-
- checkedBoxes.forEach((cb, cbIdx) => {
- const fileId = cb.dataset.fileId;
- const tableIdx = parseInt(cb.dataset.tableIdx);
- const fileObj = allParsedFiles.find(f => f.fileId === fileId);
- if(!fileObj) return;
- 
- const tableData = fileObj.tables[tableIdx].data;
- if(tableData.length === 0) return;
-
- if (cbIdx === 0) {
- // 第一份表格：全部保留（含標題列）
- mergedData.push(...JSON.parse(JSON.stringify(tableData)));
- } else {
- // 後續表格：跳過標題列，僅合併資料列
- const skipCount = fileObj.tables[tableIdx].headerRowCount || headerRowCount;
- for (let r = skipCount; r < tableData.length; r++) {
- mergedData.push([...tableData[r]]);
- }
- }
- mergedCount++;
- });
-
- if (mergedCount > 1) {
- closeMergeModal();
- renderMergedResultTab(mergedData, mergedCount, headerRowCount);
- } else {
- alert("合併失敗，發生未知錯誤。");
- }
+    function enforceGroupExclusivity(activeGroup) {
+      document.querySelectorAll('.modal-merge-cb').forEach(cb => {
+        if (cb.closest('.col-group') !== activeGroup) cb.checked = false;
+      });
     }
 
-    function renderMergedResultTab(mergedData, sourceCount, headerRowCount = 1) {
-      const oldBtn = document.getElementById('btn_merged_tab');
-      const oldPane = document.getElementById('pane_merged_tab');
-      if(oldBtn) oldBtn.remove();
-      if(oldPane) oldPane.remove();
+    function setAllInGroup(groupDiv, checked) {
+      if (checked) enforceGroupExclusivity(groupDiv);
+      groupDiv.querySelectorAll('.modal-merge-cb').forEach(cb => cb.checked = checked);
+      updateMergeHeaderInfo();
+    }
+
+    function updateMergeHeaderInfo() {
+      const checkedBoxes = document.querySelectorAll('.modal-merge-cb:checked');
+      const infoText = document.getElementById('mergeHeaderInfoText');
+      if (!infoText) return;
+
+      const getHeaderForCb = (cb) => {
+        const f = findFile(cb.dataset.fileId);
+        return f ? getHeaderRowCount(f.tables[parseInt(cb.dataset.tableIdx)]) : 1;
+      };
+
+      infoText.innerHTML = '';
+
+      if (checkedBoxes.length === 0) {
+        infoText.textContent = '請先勾選表格，將自動偵測標題列數';
+        infoText.style.color = '#64748b';
+        return;
+      }
+
+      const headerRowCount = getHeaderForCb(checkedBoxes[0]);
+
+      if (checkedBoxes.length < 2) {
+        const num = document.createElement('b');
+        num.textContent = headerRowCount;
+        infoText.append('已偵測標題 ', num, ' 列（需再勾選至少 1 張表格才能合併）');
+        infoText.style.color = '#64748b';
+        return;
+      }
+
+      let mismatchCb = null;
+      for (const cb of checkedBoxes) {
+        if (getHeaderForCb(cb) !== headerRowCount) { mismatchCb = cb; break; }
+      }
+
+      const num = document.createElement('b');
+      num.textContent = headerRowCount;
+
+      if (!mismatchCb) {
+        infoText.append('✅ 已偵測標題 ', num, ' 列（所有表格標題列數一致，合併時將保留第一份的標題列）');
+        infoText.style.color = '#059669';
+      } else {
+        const fObj = findFile(mismatchCb.dataset.fileId);
+        const tIdx = parseInt(mismatchCb.dataset.tableIdx);
+        const hr = getHeaderForCb(mismatchCb);
+        infoText.append(
+          '⚠️ 標題列數不一致！基準為 ', num,
+          ` 列（${fObj.fileName} 表格 ${fObj.tables[tIdx].tableIndex} 有 ${hr} 列標題），合併時仍以第一份為準`
+        );
+        infoText.style.color = '#d97706';
+      }
+    }
+
+    function executeMergeFromModal() {
+      const checkedBoxes = document.querySelectorAll('.modal-merge-cb:checked');
+      if (checkedBoxes.length < 2) {
+        showToast('請至少在同一個群組內勾選兩張表格才能進行合併', 'warning');
+        return;
+      }
+
+      const firstCb = checkedBoxes[0];
+      const firstFile = findFile(firstCb.dataset.fileId);
+      const firstTable = firstFile.tables[parseInt(firstCb.dataset.tableIdx)];
+      const headerRowCount = getHeaderRowCount(firstTable);
+
+      const mergedData = [];
+      const sourceBoundaries = [];
+      checkedBoxes.forEach((cb, cbIdx) => {
+        const fileObj = findFile(cb.dataset.fileId);
+        if (!fileObj) return;
+        const tableObj = fileObj.tables[parseInt(cb.dataset.tableIdx)];
+        if (!tableObj || tableObj.data.length === 0) return;
+
+        if (cbIdx === 0) {
+          sourceBoundaries.push(mergedData.length);
+          mergedData.push(...structuredClone(tableObj.data));
+        } else {
+          const skipCount = getHeaderRowCount(tableObj);
+          if (skipCount < tableObj.data.length) {
+            sourceBoundaries.push(mergedData.length);
+            for (let r = skipCount; r < tableObj.data.length; r++) {
+              mergedData.push([...tableObj.data[r]]);
+            }
+          }
+        }
+      });
+
+      if (mergedData.length === 0) {
+        showToast('合併失敗：選取的表格沒有可合併的資料', 'danger');
+        return;
+      }
+
+      closeMergeModal();
+      renderMergedResultTab(mergedData, checkedBoxes.length, headerRowCount, sourceBoundaries);
+    }
+
+    function renderMergedResultTab(mergedData, sourceCount, headerRowCount, sourceBoundaries = null) {
+      document.getElementById('btn_merged_tab')?.remove();
+      document.getElementById('pane_merged_tab')?.remove();
 
       const tabsHeader = document.getElementById('tabs-header');
       const tabBtn = document.createElement('button');
       tabBtn.className = 'tab-btn';
       tabBtn.id = 'btn_merged_tab';
-      tabBtn.innerHTML = `⭐ 合併結果`;
-      tabBtn.style.color = "#d97706";
-      tabBtn.onclick = () => switchTab('merged_tab');
+      tabBtn.dataset.action = 'switch-tab';
+      tabBtn.dataset.fileId = 'merged_tab';
+
+      const label = document.createElement('span');
+      label.textContent = '⭐ 合併結果';
+      label.style.color = '#d97706';
+      tabBtn.appendChild(label);
+
+      const closeBtn = document.createElement('span');
+      closeBtn.className = 'tab-close';
+      closeBtn.textContent = '✕';
+      closeBtn.dataset.action = 'remove-file';
+      closeBtn.dataset.fileId = 'merged_tab';
+      closeBtn.title = '移除合併結果';
+      tabBtn.appendChild(closeBtn);
+
       tabsHeader.appendChild(tabBtn);
 
-      const tabsContent = document.getElementById('tabs-content');
       const tabPane = document.createElement('div');
       tabPane.className = 'tab-pane';
       tabPane.id = 'pane_merged_tab';
 
-      const tableCard = document.createElement('div');
-      tableCard.className = 'table-card';
-      tableCard.style.border = "2px solid #f59e0b";
-      tableCard.dataset.tableIdx = 0;
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      card.style.border = '2px solid #f59e0b';
+      card.dataset.tableIdx = 0;
 
+      const colCount = mergedData.reduce((max, r) => Math.max(max, r.length), 0);
       const tableObj = {
         tableIndex: 1,
         rowCount: mergedData.length,
-        colCount: mergedData[0].length,
+        colCount,
         data: mergedData,
-        headerRowCount: headerRowCount
+        headerRowCount,
+        sourceBoundaries,
       };
 
-      const mergedObj = {
-        fileId: 'merged_tab',
-        fileName: '合併結果',
-        tables: [tableObj],
-        headerRowCount: headerRowCount
-      };
+      const mergedObj = { fileId: 'merged_tab', fileName: '合併結果', tables: [tableObj] };
 
-      renderTableCardContents(tableCard, mergedObj, tableObj, 0, false);
-      tabPane.appendChild(tableCard);
-      tabsContent.appendChild(tabPane);
+      renderTableCardContents(card, mergedObj, tableObj, 0, false);
+      tabPane.appendChild(card);
+      document.getElementById('tabs-content').appendChild(tabPane);
 
-      const existingMergedIndex = allParsedFiles.findIndex(f => f.fileId === 'merged_tab');
-      if (existingMergedIndex > -1) allParsedFiles[existingMergedIndex] = mergedObj;
-      else allParsedFiles.push(mergedObj);
+      const existingIdx = state.files.findIndex(f => f.fileId === 'merged_tab');
+      if (existingIdx > -1) state.files[existingIdx] = mergedObj;
+      else state.files.push(mergedObj);
 
       switchTab('merged_tab');
-      alert(`成功跨檔合併 ${sourceCount} 張表格！（標題列數：${headerRowCount}，總共 ${mergedData.length} 列資料）`);
+      showToast(`成功跨檔合併 ${sourceCount} 張表格！（標題 ${headerRowCount} 列，共 ${mergedData.length} 列）`, 'success');
     }
 
-    // ⭐ 輕量版 Word 匯出 (.doc) - 原生 HTML 偽裝技術 ⭐
+    // ============ Export ============
+    function buildExportPieces(tableObj) {
+      const tableHtml = buildAutoMergedHtmlTable(tableObj.data, getHeaderRowCount(tableObj), tableObj.sourceBoundaries).outerHTML;
+      const styleHtml = `<style>
+        table { border-collapse: collapse; width: 100%; font-family: "Microsoft JhengHei", sans-serif; font-size: 10.5pt; }
+        th, td { border: 1px solid #000000; padding: 6px 8px; text-align: center; vertical-align: middle; word-wrap: break-word; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+      </style>`;
+      return { tableHtml, styleHtml };
+    }
+
+    function exportFilename(fileObj, tableObj, ext) {
+      if (fileObj.fileId === 'merged_tab') return `跨檔合併結果.${ext}`;
+      return `${sanitizeFilename(fileObj.fileName)}_表格_${tableObj.tableIndex}.${ext}`;
+    }
+
     function exportTableToWord(fileId, tableIdx) {
-      const fileObj = allParsedFiles.find(f => f.fileId === fileId);
-      if(!fileObj) return;
+      const fileObj = findFile(fileId);
+      if (!fileObj) return;
       const tableObj = fileObj.tables[tableIdx];
-      const headerRowCount = tableObj.headerRowCount || 1;
-      const tableEl = buildAutoMergedHtmlTable(tableObj.data, headerRowCount);
-      
-      const htmlContent = `
-        <style>
-          table { border-collapse: collapse; width: 100%; font-family: "Microsoft JhengHei", sans-serif; font-size: 10.5pt; }
-          th, td { border: 1px solid #000000; padding: 6px 8px; text-align: center; vertical-align: middle; word-wrap: break-word; }
-          th { background-color: #f2f2f2; font-weight: bold; }
-        </style>
-        ${tableEl.outerHTML}
-      `;
-      
-      const sourceHTML = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export Table to Word</title></head><body>" + htmlContent + "</body></html>";
-      
-      // 添加 BOM 以確保正確的編碼
+      const { tableHtml, styleHtml } = buildExportPieces(tableObj);
+      const sourceHTML =
+        `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>` +
+        `<head><meta charset='utf-8'><title>Export Table to Word</title></head>` +
+        `<body>${styleHtml}${tableHtml}</body></html>`;
       const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
       const blob = new Blob([bom, sourceHTML], { type: 'application/msword' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileId === 'merged_tab' ? '跨檔合併結果.doc' : `${fileObj.fileName}_表格_${tableObj.tableIndex}.doc`;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, exportFilename(fileObj, tableObj, 'doc'));
     }
 
-    // ⭐ 進階版 Word 匯出 (.docx) - 依賴 html-docx-js 轉譯 ⭐
     function exportTableToRealDocx(fileId, tableIdx) {
       if (typeof htmlDocx === 'undefined') {
-        alert('無法載入 DOCX 轉換套件，請確認網路連線或改用 .doc 匯出。');
+        showToast('無法載入 DOCX 轉換套件，請改用 .doc 匯出', 'danger');
         return;
       }
-
-      const fileObj = allParsedFiles.find(f => f.fileId === fileId);
-      if(!fileObj) return;
+      const fileObj = findFile(fileId);
+      if (!fileObj) return;
       const tableObj = fileObj.tables[tableIdx];
-      const headerRowCount = tableObj.headerRowCount || 1;
-      const tableEl = buildAutoMergedHtmlTable(tableObj.data, headerRowCount);
-
-      // docx 套件需要內嵌較為乾淨的 style 才能解析格線
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            table { border-collapse: collapse; width: 100%; font-family: "Microsoft JhengHei", sans-serif; font-size: 10.5pt; }
-            th, td { border: 1px solid black; padding: 6px 8px; text-align: center; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          ${tableEl.outerHTML}
-        </body>
-        </html>
-      `;
-
-      // 透過 html-docx-js 將字串轉換成真正的 OOXML 格式 Blob
-      const blob = htmlDocx.asBlob(htmlContent);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileId === 'merged_tab' ? '跨檔合併結果.docx' : `${fileObj.fileName}_表格_${tableObj.tableIndex}.docx`;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const { tableHtml, styleHtml } = buildExportPieces(tableObj);
+      const html =
+        `<!DOCTYPE html><html><head><meta charset="utf-8">${styleHtml}</head>` +
+        `<body>${tableHtml}</body></html>`;
+      const blob = htmlDocx.asBlob(html);
+      downloadBlob(blob, exportFilename(fileObj, tableObj, 'docx'));
     }
 
     function exportSingleTable(fileId, tableIdx) {
-      const fileObj = allParsedFiles.find(f => f.fileId === fileId);
-      if(fileObj && fileObj.tables[tableIdx]) {
-        downloadJson(fileObj.tables[tableIdx], `${fileObj.fileName}_表格_${tableIdx + 1}.json`);
-      }
+      const fileObj = findFile(fileId);
+      if (!fileObj || !fileObj.tables[tableIdx]) return;
+      downloadJson(fileObj.tables[tableIdx], `${sanitizeFilename(fileObj.fileName)}_表格_${tableIdx + 1}.json`);
     }
 
     function exportAllData() {
-      const exportData = allParsedFiles.map(f => ({ fileName: f.fileName, tables: f.tables }));
-      downloadJson(exportData, `全部檔案提取與合併資料_${new Date().getTime()}.json`);
+      const exportData = state.files.map(f => ({ fileName: f.fileName, tables: f.tables }));
+      downloadJson(exportData, `全部檔案提取與合併資料_${Date.now()}.json`);
     }
 
-    function downloadJson(data, filename) {
-      const jsonString = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+    // ============ Event Delegation ============
+    const actionHandlers = {
+      'switch-tab':         (el) => switchTab(el.dataset.fileId),
+      'remove-file':        (el, e) => { e.stopPropagation(); removeFile(el.dataset.fileId); },
+      'edit-mode':          (el) => switchCardMode(el.dataset.fileId, +el.dataset.tableIdx, true),
+      'exit-edit':          (el) => switchCardMode(el.dataset.fileId, +el.dataset.tableIdx, false),
+      'delete-rows':        (el) => deleteSelectedRows(el.dataset.fileId, +el.dataset.tableIdx),
+      'undo-delete':        (el) => undoDelete(el.dataset.fileId, +el.dataset.tableIdx),
+      'export-json':        (el) => exportSingleTable(el.dataset.fileId, +el.dataset.tableIdx),
+      'export-doc':         (el) => exportTableToWord(el.dataset.fileId, +el.dataset.tableIdx),
+      'export-docx':        (el) => exportTableToRealDocx(el.dataset.fileId, +el.dataset.tableIdx),
+      'select-all-group':   (el) => setAllInGroup(el.closest('.col-group'), true),
+      'deselect-all-group': (el) => setAllInGroup(el.closest('.col-group'), false),
+    };
+
+    function handleDelegatedClick(e) {
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+      const handler = actionHandlers[target.dataset.action];
+      if (handler) handler(target, e);
     }
-    
- function selectAllInGroup(button) {
- const groupDiv = button.closest('.col-group');
- const checkboxes = groupDiv.querySelectorAll('.modal-merge-cb');
- checkboxes.forEach(cb => cb.checked = true);
- updateMergeHeaderInfo();
- }
- 
- function deselectAllInGroup(button) {
- const groupDiv = button.closest('.col-group');
- const checkboxes = groupDiv.querySelectorAll('.modal-merge-cb');
- checkboxes.forEach(cb => cb.checked = false);
- updateMergeHeaderInfo();
- }
+
+    // ============ Init ============
+    document.addEventListener('DOMContentLoaded', () => {
+      const dropZone = document.getElementById('drop-zone');
+      const fileInput = document.getElementById('file-input');
+
+      dropZone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFiles(e.target.files);
+      });
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, false);
+      });
+      dropZone.addEventListener('dragenter', () => dropZone.classList.add('drag-over'));
+      dropZone.addEventListener('dragover', () => dropZone.classList.add('drag-over'));
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+      dropZone.addEventListener('drop', (e) => {
+        dropZone.classList.remove('drag-over');
+        const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.docx'));
+        if (files.length > 0) handleFiles(files);
+        else showToast('請上傳有效的 Word (.docx) 檔案', 'warning');
+      });
+
+      document.getElementById('clearBtn').addEventListener('click', clearAll);
+      document.getElementById('exportAllBtn').addEventListener('click', exportAllData);
+      document.getElementById('openMergeHubBtn').addEventListener('click', openMergeModal);
+      document.getElementById('mergeCancelBtn').addEventListener('click', closeMergeModal);
+      document.getElementById('mergeExecuteBtn').addEventListener('click', executeMergeFromModal);
+
+      // 統一委派點擊事件
+      document.getElementById('tabs-header').addEventListener('click', handleDelegatedClick);
+      document.getElementById('tabs-content').addEventListener('click', handleDelegatedClick);
+      document.getElementById('mergeListContainer').addEventListener('click', handleDelegatedClick);
+
+      // 合併視窗的勾選變更：強制群組互斥 + 更新標題列資訊
+      document.getElementById('mergeListContainer').addEventListener('change', (e) => {
+        const cb = e.target.closest('.modal-merge-cb');
+        if (!cb) return;
+        if (cb.checked) enforceGroupExclusivity(cb.closest('.col-group'));
+        updateMergeHeaderInfo();
+      });
+    });
   </script>
 </body>
 </html>
