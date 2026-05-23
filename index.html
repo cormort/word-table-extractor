@@ -931,7 +931,9 @@
           sourceBoundaries.push(mergedData.length);
           mergedData.push(...structuredClone(tableObj.data));
         } else {
-          const skipCount = getHeaderRowCount(tableObj);
+          // 統一使用第 1 張表的 headerRowCount 跳過，避免各表自偵測不一致導致
+          // 後續表的標題列漏跳而以資料列形態重複出現。
+          const skipCount = headerRowCount;
           if (skipCount < tableObj.data.length) {
             sourceBoundaries.push(mergedData.length);
             for (let r = skipCount; r < tableObj.data.length; r++) {
