@@ -445,6 +445,28 @@
           for (let i = 0; i < colCount; i++) if (r[i] === undefined) r[i] = '';
         });
 
+        // 結構偵測：mammoth 不一定會把多列 header 全標成 <th>，但 Word 的多列
+        // header 通常會在 row 0 用 rowspan>1（含群組欄位的標題）或 colspan>1
+        // （上方群組、下方 sub-header）。從 row 0 往下走，只要某列有 cell 暗示
+        // 下一列仍是 header，就把 header 範圍延伸過去。
+        let structuralEnd = 0;
+        for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+          if (rIdx > structuralEnd) break;
+          const cells = rows[rIdx].querySelectorAll('th, td');
+          let hasColspan = false;
+          cells.forEach(cell => {
+            const rs = parseInt(cell.getAttribute('rowspan')) || 1;
+            const cs = parseInt(cell.getAttribute('colspan')) || 1;
+            if (cs > 1) hasColspan = true;
+            const extent = rIdx + rs - 1;
+            if (extent > structuralEnd) structuralEnd = extent;
+          });
+          if (hasColspan && rIdx + 1 > structuralEnd) structuralEnd = rIdx + 1;
+        }
+        const structuralCount = structuralEnd + 1;
+
+        // 取 TH 計數與結構偵測的較大值，再套保底
+        autoHeaderRowCount = Math.max(autoHeaderRowCount, structuralCount);
         if (autoHeaderRowCount === 0) autoHeaderRowCount = 1;
         if (autoHeaderRowCount >= rowsJson.length) autoHeaderRowCount = 1;
 
