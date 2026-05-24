@@ -1,0 +1,31 @@
+{
+  "name": "word-table-extractor-mcp",
+  "version": "0.1.0",
+  "description": "MCP server: extract and merge tables from Word (.docx) files",
+  "type": "module",
+  "bin": {
+    "word-table-extractor-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "jsdom": "^25.0.1",
+    "mammoth": "^1.8.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
