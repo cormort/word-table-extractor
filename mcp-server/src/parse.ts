@@ -8,7 +8,10 @@ import type { ExtractResult, TableObj } from "./types.js";
  * 解析單一 .docx 檔，回傳所有表格的結構化資料。
  * 演算法與原 HTML 版本一致：
  *   - 用 rowspan/colspan 展開 grid
- *   - 偵測連續開頭的「至少含一個 <th>」列數作為 headerRowCount
+ *   - headerRowCount = max(TH 計數, 結構偵測值)
+ *     · TH 計數：連續開頭含 <th> 的列數
+ *     · 結構偵測：從 row 0 起，cell 的 rowspan>1 或 colspan>1 暗示下一列仍是
+ *       header（mammoth 不一定會把多列 header 全標成 <th>，所以需要這個輔助）
  *   - colCount 取所有列的最大寬度，鋸齒列補空字串
  */
 export async function extractTablesFromDocx(docxPath: string): Promise<ExtractResult> {
@@ -67,6 +70,25 @@ export async function extractTablesFromDocx(docxPath: string): Promise<ExtractRe
       for (let i = 0; i < colCount; i++) if (r[i] === undefined) r[i] = "";
     });
 
+    // 結構偵測：從 row 0 往下走，只要該列 cell 有 rowspan>1 或 colspan>1，
+    // 就把 header 範圍延伸到下一列
+    let structuralEnd = 0;
+    for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+      if (rIdx > structuralEnd) break;
+      const cells = rows[rIdx].querySelectorAll("th, td");
+      let hasColspan = false;
+      cells.forEach((cell) => {
+        const rs = parseInt(cell.getAttribute("rowspan") || "1", 10) || 1;
+        const cs = parseInt(cell.getAttribute("colspan") || "1", 10) || 1;
+        if (cs > 1) hasColspan = true;
+        const extent = rIdx + rs - 1;
+        if (extent > structuralEnd) structuralEnd = extent;
+      });
+      if (hasColspan && rIdx + 1 > structuralEnd) structuralEnd = rIdx + 1;
+    }
+    const structuralCount = structuralEnd + 1;
+
+    autoHeaderRowCount = Math.max(autoHeaderRowCount, structuralCount);
     if (autoHeaderRowCount === 0) autoHeaderRowCount = 1;
     if (autoHeaderRowCount >= rowsJson.length) autoHeaderRowCount = 1;
 

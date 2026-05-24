@@ -14,7 +14,8 @@ const server = new McpServer(
       "提供 Word (.docx) 表格抽取與合併。" +
       "extract_tables：給定 .docx 路徑，回傳所有表格的二維陣列與標題列數。" +
       "merge_tables：給定多張同欄數表格的 JSON（從 extract_tables 取得），" +
-      "回傳合併後的表格；合併規則為第一張保留 header，後續跳過自己的 header 列。",
+      "回傳合併後的表格；合併時 headerRowCount 取所有表的最大值，" +
+      "第一張全部保留（含 header），後續每張跳過此最大值列數的 header。",
   }
 );
 
@@ -33,7 +34,8 @@ server.registerTool(
     title: "Extract tables from Word .docx",
     description:
       "解析指定路徑的 .docx 檔，回傳所有偵測到的表格。每張表包含 rowCount、colCount、" +
-      "headerRowCount（自動偵測）、data（已展開 rowspan/colspan 的二維字串陣列）。",
+      "headerRowCount（結合 TH 計數與 rowspan/colspan 結構偵測自動推算）、" +
+      "data（已展開 rowspan/colspan 的二維字串陣列）。",
     inputSchema: {
       docxPath: z
         .string()
@@ -64,9 +66,10 @@ server.registerTool(
   {
     title: "Merge multiple tables",
     description:
-      "合併多張表格。第一張全部保留（含 header），後續每張跳過自己的 headerRowCount 列。" +
-      "回傳的 mergedTable 含 sourceBoundaries（每張來源表起始 row index），" +
-      "供呼叫端在渲染時避免 rowspan 跨越來源表邊界。",
+      "合併多張表格。預設 headerRowCount = max(所有表的 headerRowCount)，避免" +
+      "個別表偵測失準時把 sub-header 漏跳成資料列。第一張全部保留（含 header），" +
+      "後續每張跳過 headerRowCount 列。回傳的 mergedTable 含 sourceBoundaries" +
+      "（每張來源表起始 row index），供呼叫端在渲染時避免 rowspan 跨越來源表邊界。",
     inputSchema: {
       tables: z
         .array(tableSchema)
@@ -77,7 +80,7 @@ server.registerTool(
         .int()
         .min(1)
         .optional()
-        .describe("可選：覆寫第一張表偵測到的 headerRowCount"),
+        .describe("可選：覆寫自動推算的 headerRowCount（預設為所有表的最大值）"),
     },
   },
   async ({ tables, headerRowCount }) => {
