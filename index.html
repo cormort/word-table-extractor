@@ -562,6 +562,8 @@
         }
         rightDiv.appendChild(makeBtn('🛠️ 編輯', 'btn-warning', 'edit-mode', fileObj.fileId, tableIdx));
         rightDiv.appendChild(makeBtn('JSON', 'btn-secondary', 'export-json', fileObj.fileId, tableIdx));
+        rightDiv.appendChild(makeBtn('📊 CSV', 'btn-secondary', 'export-csv', fileObj.fileId, tableIdx));
+        rightDiv.appendChild(makeBtn('📝 MD', 'btn-secondary', 'export-md', fileObj.fileId, tableIdx));
         rightDiv.appendChild(makeBtn('📄 .doc', 'btn-word', 'export-doc', fileObj.fileId, tableIdx));
         rightDiv.appendChild(makeBtn('📄 .docx', 'btn-word-docx', 'export-docx', fileObj.fileId, tableIdx));
       } else {
@@ -1093,6 +1095,73 @@
       downloadJson(fileObj.tables[tableIdx], `${sanitizeFilename(fileObj.fileName)}_表格_${tableIdx + 1}.json`);
     }
 
+    // ===== CSV 匯出 =====
+    function csvEscape(value) {
+      const s = String(value ?? '');
+      if (/[",\r\n]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    function tableToCsv(data) {
+      return data.map(row => row.map(csvEscape).join(',')).join('\r\n');
+    }
+
+    function exportTableToCsv(fileId, tableIdx) {
+      const fileObj = findFile(fileId);
+      if (!fileObj || !fileObj.tables[tableIdx]) return;
+      const tableObj = fileObj.tables[tableIdx];
+      // 加 UTF-8 BOM 讓 Excel 打開不會亂碼
+      const blob = new Blob(['﻿', tableToCsv(tableObj.data)], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(blob, exportFilename(fileObj, tableObj, 'csv'));
+    }
+
+    // ===== Markdown 匯出 =====
+    function mdEscape(value) {
+      // Pipe 要 escape、換行轉成 <br>（GFM 支援）
+      return String(value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+    }
+
+    function tableToMarkdown(data, headerRowCount) {
+      if (!data || data.length === 0) return '';
+      const cols = data[0].length;
+      const hrc = Math.max(1, Math.min(headerRowCount || 1, data.length));
+
+      // Markdown 只有單列 header；多列 header 合併成一格，
+      // 同欄裡重複的文字（rowspan 展開造成）去重後用 <br> 串接
+      let headerCells;
+      if (hrc > 1) {
+        headerCells = Array.from({ length: cols }, (_, c) => {
+          const parts = [];
+          for (let r = 0; r < hrc; r++) {
+            const cell = data[r]?.[c] ?? '';
+            if (cell && !parts.includes(cell)) parts.push(cell);
+          }
+          return parts.join('<br>');
+        });
+      } else {
+        headerCells = data[0] || [];
+      }
+
+      const lines = [];
+      lines.push('| ' + headerCells.map(mdEscape).join(' | ') + ' |');
+      lines.push('|' + headerCells.map(() => ' --- ').join('|') + '|');
+      for (let r = hrc; r < data.length; r++) {
+        lines.push('| ' + (data[r] || []).map(mdEscape).join(' | ') + ' |');
+      }
+      return lines.join('\n') + '\n';
+    }
+
+    function exportTableToMarkdown(fileId, tableIdx) {
+      const fileObj = findFile(fileId);
+      if (!fileObj || !fileObj.tables[tableIdx]) return;
+      const tableObj = fileObj.tables[tableIdx];
+      const md = tableToMarkdown(tableObj.data, getHeaderRowCount(tableObj));
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+      downloadBlob(blob, exportFilename(fileObj, tableObj, 'md'));
+    }
+
     function exportAllData() {
       const exportData = state.files.map(f => ({ fileName: f.fileName, tables: f.tables }));
       downloadJson(exportData, `全部檔案提取與合併資料_${Date.now()}.json`);
@@ -1107,6 +1176,8 @@
       'delete-rows':        (el) => deleteSelectedRows(el.dataset.fileId, +el.dataset.tableIdx),
       'undo-delete':        (el) => undoDelete(el.dataset.fileId, +el.dataset.tableIdx),
       'export-json':        (el) => exportSingleTable(el.dataset.fileId, +el.dataset.tableIdx),
+      'export-csv':         (el) => exportTableToCsv(el.dataset.fileId, +el.dataset.tableIdx),
+      'export-md':          (el) => exportTableToMarkdown(el.dataset.fileId, +el.dataset.tableIdx),
       'export-doc':         (el) => exportTableToWord(el.dataset.fileId, +el.dataset.tableIdx),
       'export-docx':        (el) => exportTableToRealDocx(el.dataset.fileId, +el.dataset.tableIdx),
       'select-all-group':   (el) => setAllInGroup(el.closest('.col-group'), true),
