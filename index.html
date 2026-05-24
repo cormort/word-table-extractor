@@ -898,33 +898,37 @@
         return;
       }
 
-      const headerRowCount = getHeaderForItem(order[0]);
+      const hrcValues = order.map(getHeaderForItem);
+      const maxHrc = Math.max(...hrcValues);
 
       if (order.length < 2) {
         const num = document.createElement('b');
-        num.textContent = headerRowCount;
+        num.textContent = maxHrc;
         infoText.append('已偵測標題 ', num, ' 列（需再勾選至少 1 張表格才能合併）');
         infoText.style.color = '#64748b';
         return;
       }
 
-      let mismatch = null;
-      for (const item of order) {
-        if (getHeaderForItem(item) !== headerRowCount) { mismatch = item; break; }
-      }
-
+      const allSame = hrcValues.every(h => h === maxHrc);
       const num = document.createElement('b');
-      num.textContent = headerRowCount;
+      num.textContent = maxHrc;
 
-      if (!mismatch) {
-        infoText.append('✅ 已偵測標題 ', num, ' 列（所有表格標題列數一致，合併時將保留第 1 張的標題列）');
+      if (allSame) {
+        infoText.append('✅ 已偵測標題 ', num, ' 列（所有表格標題列數一致）');
         infoText.style.color = '#059669';
       } else {
-        const fObj = findFile(mismatch.fileId);
-        const hr = getHeaderForItem(mismatch);
+        const lessNames = order
+          .map((item, i) => ({ item, hrc: hrcValues[i] }))
+          .filter(x => x.hrc < maxHrc)
+          .map(x => {
+            const f = findFile(x.item.fileId);
+            return f ? `${f.fileName} 表格 ${f.tables[x.item.tableIdx].tableIndex}（${x.hrc} 列）` : '';
+          })
+          .filter(Boolean)
+          .join('、');
         infoText.append(
-          '⚠️ 標題列數不一致！基準為 ', num,
-          ` 列（${fObj.fileName} 表格 ${fObj.tables[mismatch.tableIdx].tableIndex} 有 ${hr} 列標題），合併時仍以第 1 張為準`
+          '⚠️ 標題列數不一致！合併時將以最大值 ', num,
+          ` 列為基準（避免偵測較少的表把 sub-header 漏跳成資料列）。偵測較少：${lessNames}`
         );
         infoText.style.color = '#d97706';
       }
@@ -937,9 +941,14 @@
         return;
       }
 
-      const firstFile = findFile(order[0].fileId);
-      const firstTable = firstFile.tables[order[0].tableIdx];
-      const headerRowCount = getHeaderRowCount(firstTable);
+      // 取所有被選表格 headerRowCount 的最大值作為統一跳過依據，
+      // 避免單張表偵測失準時把 sub-header 漏跳成資料列。
+      const headerRowCount = order.reduce((max, item) => {
+        const f = findFile(item.fileId);
+        if (!f) return max;
+        const t = f.tables[item.tableIdx];
+        return t ? Math.max(max, getHeaderRowCount(t)) : max;
+      }, 1);
 
       const mergedData = [];
       const sourceBoundaries = [];
@@ -953,8 +962,7 @@
           sourceBoundaries.push(mergedData.length);
           mergedData.push(...structuredClone(tableObj.data));
         } else {
-          // 統一使用第 1 張表的 headerRowCount 跳過，避免各表自偵測不一致導致
-          // 後續表的標題列漏跳而以資料列形態重複出現。
+          // 用上面算好的 max headerRowCount 統一跳過。
           const skipCount = headerRowCount;
           if (skipCount < tableObj.data.length) {
             sourceBoundaries.push(mergedData.length);
