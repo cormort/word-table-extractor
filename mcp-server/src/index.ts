@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { extractTablesFromDocx } from "./parse.js";
 import { mergeTables } from "./merge.js";
+import { tableToCsv, tableToMarkdown } from "./format.js";
 import type { TableObj } from "./types.js";
 
 const server = new McpServer(
@@ -11,7 +12,12 @@ const server = new McpServer(
   {
     capabilities: { tools: {} },
     instructions:
-      "提供 Word (.docx) 表格抽取與合併。\n\n" +
+      "提供 Word (.docx) 表格抽取、合併與格式轉換。\n\n" +
+      "## 工具\n" +
+      "- `extract_tables`：.docx 路徑 → 所有表格的 JSON\n" +
+      "- `merge_tables`：多張表的 JSON → 合併後表格 + warnings\n" +
+      "- `table_to_csv`：單張表 → CSV 文字\n" +
+      "- `table_to_markdown`：單張表 → GFM Markdown 表格\n\n" +
       "## 典型工作流\n" +
       "1. 對每個 .docx 呼叫 `extract_tables`，得到每張表的 colCount、" +
       "headerRowCount、data。\n" +
@@ -21,7 +27,9 @@ const server = new McpServer(
       "headerRowCount 應該相同。差異大就不該合，否則語意會亂。\n" +
       "3. 結合使用者意圖（自然語言指示）決定最終要合的清單。\n" +
       "4. 把表的陣列餵給 `merge_tables`；它回傳 `{ table, warnings }`，" +
-      "warnings 不為空時應該回報給使用者。\n\n" +
+      "warnings 不為空時應該回報給使用者。\n" +
+      "5. 若使用者要 CSV / Markdown 文字，把上一步的 table 或 extract_tables " +
+      "回傳的某張 table 餵給 `table_to_csv` 或 `table_to_markdown`。\n\n" +
       "## 重點\n" +
       "- 表的順序就是合併順序：第 1 張的 header 會被保留。\n" +
       "- headerRowCount 預設取所有表的 max，所以單張偵測失準也不會漏跳。\n" +
@@ -131,6 +139,64 @@ server.registerTool(
       return {
         isError: true,
         content: [{ type: "text", text: `merge_tables 失敗：${msg}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "table_to_csv",
+  {
+    title: "Convert TableObj to CSV text",
+    description:
+      "把單張表格（通常是 extract_tables 或 merge_tables 的輸出）轉成 CSV 文字。\n" +
+      "- 用 CRLF 行尾（Excel 友善）\n" +
+      "- 含逗號 / 雙引號 / 換行的欄位自動以雙引號包覆並 escape\n" +
+      "- 回傳純文字，不含 BOM；若需在 Excel 開檔不亂碼，存檔時自行加上 \\uFEFF",
+    inputSchema: {
+      table: tableSchema.describe(
+        "要轉換的表格（從 extract_tables 或 merge_tables 取得）"
+      ),
+    },
+  },
+  async ({ table }) => {
+    try {
+      const csv = tableToCsv(table as TableObj);
+      return { content: [{ type: "text", text: csv }] };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        isError: true,
+        content: [{ type: "text", text: `table_to_csv 失敗：${msg}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "table_to_markdown",
+  {
+    title: "Convert TableObj to GFM Markdown table",
+    description:
+      "把單張表格轉成 GitHub Flavored Markdown 表格。\n" +
+      "- 多列 header（headerRowCount > 1）會合併成單列：同欄裡因 rowspan 展開造成" +
+      "的重複文字會 dedup 後用 <br> 串接\n" +
+      "- pipe 與換行字元自動 escape",
+    inputSchema: {
+      table: tableSchema.describe(
+        "要轉換的表格（從 extract_tables 或 merge_tables 取得）"
+      ),
+    },
+  },
+  async ({ table }) => {
+    try {
+      const md = tableToMarkdown(table as TableObj);
+      return { content: [{ type: "text", text: md }] };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        isError: true,
+        content: [{ type: "text", text: `table_to_markdown 失敗：${msg}` }],
       };
     }
   }
