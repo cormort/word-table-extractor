@@ -104,9 +104,13 @@
     .table-header-left { display: flex; align-items: center; gap: 15px; }
 
     .table-overflow { overflow-x: auto; padding: 16px; }
-    .table-overflow table { width: 100%; border-collapse: collapse; font-size: 13px; color: #334155; }
+    .table-overflow table {
+      width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;
+      table-layout: fixed;
+    }
     .table-overflow th, .table-overflow td {
-      border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center; vertical-align: middle; white-space: nowrap;
+      border: 1px solid #cbd5e1; padding: 8px 12px; text-align: center; vertical-align: middle;
+      word-break: break-word; overflow-wrap: anywhere; white-space: normal;
     }
     .table-overflow th { background-color: #f1f5f9; font-weight: 600; }
     .edit-col-cb { width: 22px; height: 22px; cursor: pointer; }
