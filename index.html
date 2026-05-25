@@ -556,6 +556,26 @@
         titleSpan.textContent = `表格 ${tableObj.tableIndex} (共 ${tableObj.rowCount} 列, ${tableObj.colCount} 欄)`;
         leftDiv.appendChild(titleSpan);
 
+        // 標題列數調整（個別表格可覆寫自動偵測結果）
+        const hrcWrap = document.createElement('label');
+        hrcWrap.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #64748b; font-weight: normal;';
+        const hrcPrefix = document.createElement('span');
+        hrcPrefix.textContent = '標題';
+        const hrcInput = document.createElement('input');
+        hrcInput.type = 'number';
+        hrcInput.min = '1';
+        hrcInput.max = String(Math.max(1, tableObj.data.length - 1));
+        hrcInput.value = String(headerRowCount);
+        hrcInput.title = '調整此表格的標題列數（影響合併時跳過的列數與 <th> 渲染）';
+        hrcInput.style.cssText = 'width: 56px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;';
+        hrcInput.dataset.action = 'change-hrc';
+        hrcInput.dataset.fileId = fileObj.fileId;
+        hrcInput.dataset.tableIdx = tableIdx;
+        const hrcSuffix = document.createElement('span');
+        hrcSuffix.textContent = '列';
+        hrcWrap.append(hrcPrefix, hrcInput, hrcSuffix);
+        leftDiv.appendChild(hrcWrap);
+
         const undoKey = `${fileObj.fileId}:${tableIdx}`;
         if ((state.undoStacks[undoKey]?.length || 0) > 0) {
           rightDiv.appendChild(makeBtn('↩️ 復原', 'btn-secondary', 'undo-delete', fileObj.fileId, tableIdx));
@@ -596,25 +616,31 @@
       const skip = Array.from({ length: rows }, () => Array(cols).fill(false));
       const boundarySet = boundaries && boundaries.length ? new Set(boundaries) : null;
 
+      // 自動合併「只」套用在 header 列：mammoth 會把 Word 多列 header 的 rowspan/
+      // colspan 展開成重複文字，視覺上需要還原。資料列的重複數值是合法資料，
+      // 不可自動合併，否則會破壞原始資料列的對齊與正確性。
       for (let r = 0; r < rows; r++) {
         const tr = document.createElement('tr');
+        const inHeader = r < headerRowCount;
         for (let c = 0; c < cols; c++) {
           if (skip[r][c]) continue;
           const text = matrix[r][c];
 
           let colspan = 1;
-          while (c + colspan < cols && matrix[r][c + colspan] === text && !skip[r][c + colspan]) {
-            colspan++;
-          }
-
           let rowspan = 1;
-          outer: while (r + rowspan < rows) {
-            // 不跨越來源表格邊界（合併結果才有）
-            if (boundarySet && boundarySet.has(r + rowspan)) break;
-            for (let i = 0; i < colspan; i++) {
-              if (matrix[r + rowspan][c + i] !== text || skip[r + rowspan][c + i]) break outer;
+
+          if (inHeader) {
+            while (c + colspan < cols && matrix[r][c + colspan] === text && !skip[r][c + colspan]) {
+              colspan++;
             }
-            rowspan++;
+            // rowspan 只允許在 header 範圍內延伸，不跨進資料列
+            outer: while (r + rowspan < rows && r + rowspan < headerRowCount) {
+              if (boundarySet && boundarySet.has(r + rowspan)) break;
+              for (let i = 0; i < colspan; i++) {
+                if (matrix[r + rowspan][c + i] !== text || skip[r + rowspan][c + i]) break outer;
+              }
+              rowspan++;
+            }
           }
 
           for (let i = 0; i < rowspan; i++) {
@@ -623,7 +649,7 @@
             }
           }
 
-          const cell = document.createElement(r < headerRowCount ? 'th' : 'td');
+          const cell = document.createElement(inHeader ? 'th' : 'td');
           cell.textContent = text;
           if (colspan > 1) cell.setAttribute('colspan', colspan);
           if (rowspan > 1) cell.setAttribute('rowspan', rowspan);
@@ -709,6 +735,20 @@
       targetIndices.forEach(idx => tableObj.data.splice(idx, 1));
       tableObj.rowCount = tableObj.data.length;
       renderTableCardContents(card, fileObj, tableObj, tableIdx, true);
+    }
+
+    function changeHeaderRowCount(fileId, tableIdx, rawValue) {
+      const fileObj = findFile(fileId);
+      if (!fileObj) return;
+      const tableObj = fileObj.tables[tableIdx];
+      if (!tableObj) return;
+      const maxAllowed = Math.max(1, tableObj.data.length - 1);
+      const parsed = parseInt(rawValue, 10);
+      const value = Math.max(1, Math.min(maxAllowed, isNaN(parsed) ? 1 : parsed));
+      if (value === tableObj.headerRowCount) return;
+      tableObj.headerRowCount = value;
+      const card = findCard(fileId, tableIdx);
+      if (card) renderTableCardContents(card, fileObj, tableObj, tableIdx, false);
     }
 
     function undoDelete(fileId, tableIdx) {
@@ -953,9 +993,10 @@
           sourceBoundaries.push(mergedData.length);
           mergedData.push(...structuredClone(tableObj.data));
         } else {
-          // 統一使用第 1 張表的 headerRowCount 跳過，避免各表自偵測不一致導致
-          // 後續表的標題列漏跳而以資料列形態重複出現。
-          const skipCount = headerRowCount;
+          // 各表使用「自己」的 headerRowCount 跳過自己的標題列。
+          // 個別表格的 hrc 由 user 在卡片標題列調整；mergeHeaderInfo 已會在
+          // hrc 不一致時警告，避免使用者誤合不同結構的表格。
+          const skipCount = getHeaderRowCount(tableObj);
           if (skipCount < tableObj.data.length) {
             sourceBoundaries.push(mergedData.length);
             for (let r = skipCount; r < tableObj.data.length; r++) {
@@ -1148,6 +1189,14 @@
       document.getElementById('tabs-header').addEventListener('click', handleDelegatedClick);
       document.getElementById('tabs-content').addEventListener('click', handleDelegatedClick);
       document.getElementById('mergeListContainer').addEventListener('click', handleDelegatedClick);
+
+      // 個別表格調整標題列數
+      document.getElementById('tabs-content').addEventListener('change', (e) => {
+        const t = e.target;
+        if (t && t.dataset && t.dataset.action === 'change-hrc') {
+          changeHeaderRowCount(t.dataset.fileId, +t.dataset.tableIdx, t.value);
+        }
+      });
 
       // 合併視窗的勾選變更：強制群組互斥 + 更新標題列資訊
       document.getElementById('mergeListContainer').addEventListener('change', (e) => {
