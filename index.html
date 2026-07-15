@@ -365,9 +365,6 @@
     // ============ File handling & Parsing ============
     async function handleFiles(files) {
       toggleLoading(true);
-      document.getElementById('noDataHint')?.remove();
-      document.getElementById('globalActionGroup').classList.remove('hidden');
-      document.getElementById('tabs-header').classList.remove('hidden');
 
       const results = await Promise.all(Array.from(files).map(parseFileToObj));
       results.forEach(fileObj => {
@@ -376,6 +373,9 @@
 
       toggleLoading(false);
       if (state.files.length > 0) {
+        document.getElementById('noDataHint')?.remove();
+        document.getElementById('globalActionGroup').classList.remove('hidden');
+        document.getElementById('tabs-header').classList.remove('hidden');
         switchTab(state.files[state.files.length - 1].fileId);
       }
     }
@@ -682,7 +682,8 @@
             cardEl.querySelectorAll('.row-delete-cb').forEach(cb => cb.checked = e.target.checked);
           });
           cellCheck.appendChild(chkAll);
-        } else {
+        } else if (rIdx >= headerRowCount) {
+          // 標題列（含 sub-header）不提供刪除勾選，避免誤刪造成 headerRowCount 錯位
           const chk = document.createElement('input');
           chk.type = 'checkbox';
           chk.className = 'row-delete-cb edit-col-cb';
@@ -1134,7 +1135,8 @@
     function exportSingleTable(fileId, tableIdx) {
       const fileObj = findFile(fileId);
       if (!fileObj || !fileObj.tables[tableIdx]) return;
-      downloadJson(fileObj.tables[tableIdx], `${sanitizeFilename(fileObj.fileName)}_表格_${tableIdx + 1}.json`);
+      const tableObj = fileObj.tables[tableIdx];
+      downloadJson(tableObj, exportFilename(fileObj, tableObj, 'json'));
     }
 
     // ===== CSV 匯出 =====
