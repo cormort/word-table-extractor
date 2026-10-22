@@ -232,6 +232,9 @@
           <span style="font-weight: 600; color: #334155; white-space: nowrap;">📋 標題列：</span>
           <span id="mergeHeaderInfoText" style="font-size: 14px; color: #64748b;">請先勾選表格，將自動偵測標題列數</span>
         </div>
+        <label style="display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 14px; color: #334155; cursor: pointer;" title="合併後每一列最前面加上它來自哪個檔案，方便辨識與篩選">
+          <input type="checkbox" id="mergeAddSource" checked> 在最前面加上「來源檔案」欄
+        </label>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" id="mergeCancelBtn">取消</button>
@@ -715,7 +718,10 @@
     function switchTab(fileId) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-      document.getElementById(`btn_${fileId}`)?.classList.add('active');
+      const btn = document.getElementById(`btn_${fileId}`);
+      btn?.classList.add('active');
+      // 分頁多時目前分頁可能在捲動範圍外，捲進來才看得出內容屬於哪個檔
+      btn?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       document.getElementById(`pane_${fileId}`)?.classList.add('active');
     }
 
@@ -1004,6 +1010,7 @@
 
       const mergedData = [];
       const sourceBoundaries = [];
+      const sourceNames = [];  // 與 sourceBoundaries 一一對應
       order.forEach((item, idx) => {
         const fileObj = findFile(item.fileId);
         if (!fileObj) return;
@@ -1012,6 +1019,7 @@
 
         if (idx === 0) {
           sourceBoundaries.push(mergedData.length);
+          sourceNames.push(fileObj.fileName);
           mergedData.push(...structuredClone(tableObj.data));
         } else {
           // 各表使用「自己」的 headerRowCount 跳過自己的標題列。
@@ -1020,6 +1028,7 @@
           const skipCount = getHeaderRowCount(tableObj);
           if (skipCount < tableObj.data.length) {
             sourceBoundaries.push(mergedData.length);
+            sourceNames.push(fileObj.fileName);
             for (let r = skipCount; r < tableObj.data.length; r++) {
               mergedData.push([...tableObj.data[r]]);
             }
@@ -1030,6 +1039,16 @@
       if (mergedData.length === 0) {
         showToast('合併失敗：選取的表格沒有可合併的資料', 'danger');
         return;
+      }
+
+      // 各表內容常常長得一樣（例如每檔都只有「營運量」一列），合併後要能分辨每列來自哪個檔。
+      // 每一列標題列都放「來源檔案」，渲染時會自動合成一格。
+      if (document.getElementById('mergeAddSource')?.checked) {
+        let src = -1;
+        mergedData.forEach((row, r) => {
+          if (sourceBoundaries[src + 1] === r) src++;
+          row.unshift(r < headerRowCount ? '來源檔案' : sourceNames[src]);
+        });
       }
 
       closeMergeModal();
